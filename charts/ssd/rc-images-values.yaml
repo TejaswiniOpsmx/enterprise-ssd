@@ -102,25 +102,6 @@ aws-poller:
   image:
     tag: "6d29b38-22"
 
-checkmarx-poller:
-  image:
-    repository: priyanshishikha/checkmarx-poller    
-    tag: "v2026.07.01.1755"
-
-kubernetes-detector:
-  image:
-    tag: "4476f21-10"
-
-opsmx-assistant:
-  image:
-    repository: sahititarigoppula/opsmx-assistant
-    tag: "v9"
-
-ssd-license-aibom:
-  image:
-    repository: rishabhopsmx/ssd-license-aibom
-    tag: "lp-0.5"
-
 ssd-api-mcp:
   image:
     tag: "dev-cc0ad95-3"
