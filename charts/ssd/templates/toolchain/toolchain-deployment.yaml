@@ -168,8 +168,8 @@ spec:
         - name: logs
           emptyDir: {}
         - name: tool-chain-volume
-          configMap:
-            name: tool-chain
+          secret:
+            secretName: tool-chain
             items:
               - key: tool-chain.yaml
                 path: tool-chain.yaml

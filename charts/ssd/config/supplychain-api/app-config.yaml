@@ -9,7 +9,18 @@ namespace: {{ .Release.Namespace }}
 zapService: http://zap-service:8080
 ssdLicenseGenerator: http://ssd-license-generator:8080
 aiRemediation: http://ai-guardian-remediation:8588
-ssdVuln: http://212.2.240.29:8900
+{{- /* ssdVuln: URL from supplychainapi.ssdVuln (no credentials allowed there); username/password from aiSecrets are URL-encoded and the whole value is quoted so special characters cannot break or inject into the YAML */}}
+{{- $vuln := default "https://ssd.oss.opsmx.net" .Values.supplychainapi.ssdVuln }}
+{{- if not (regexMatch "^https?://[^@/\\s]+(/.*)?$" $vuln) }}
+{{- fail "supplychainapi.ssdVuln must be an http(s) URL without embedded credentials; set aiSecrets.supplychainApi.ssdVulnUsername/ssdVulnPassword instead" }}
+{{- end }}
+{{- $vc := .Values.aiSecrets.supplychainApi }}
+{{- if and $vc.ssdVulnUsername $vc.ssdVulnPassword }}
+{{- $vuln = regexReplaceAll "^(https?://)" $vuln (printf "${1}%s:%s@" (urlquery $vc.ssdVulnUsername | replace "+" "%20") (urlquery $vc.ssdVulnPassword | replace "+" "%20")) }}
+{{- end }}
+ssdVuln: {{ $vuln | quote }}
+aigAddress: {{ default (printf "http://ai-guardian-api.%s.svc.cluster.local:8080" .Release.Namespace) .Values.supplychainapi.aigAddress | quote }}
+ssdApiMcp: {{ default "http://ssd-api-mcp:8080" .Values.supplychainapi.ssdApiMcp | quote }}
 aibomService: http://aibom-service:8082
 hbomGenerator: http://hbom-generator:8090
 audit:

@@ -55,6 +55,43 @@ s3bucketurl: https://s3bucketname.s3.awsregion.amazonaws.com
 ## If it is true AI Shield and DLVS Services will be installed ###############
 installAimlSvcs: false
 ####################################################
+## Secrets for the AI services (ai-guardian-remediation and pentestgpt-wrapper).
+##
+## !!! SECURITY WARNING !!!
+## Do NOT put real tokens/passwords in this file and do NOT commit or push real values to any repository.
+## Copy ai-secrets.example.yaml to ai-secrets.local.yaml (git-ignored), fill in the real values and install with
+##   helm install ... -f ai-secrets.local.yaml --set-file aiSecrets.claudeCredentials.json=$HOME/.claude/.credentials.json
+## Each secret is created only when its values are changed from REPLACE_ME (or the json is provided).
+## To manage a secret yourself (kubectl, sealed-secrets, external-secrets, ...) set its existingSecret.
+aiSecrets:
+  ## Secret consumed by ai-guardian-remediation (envFrom)
+  airemediation:
+    create: true
+    existingSecret: ""              # name of your own secret; the chart then creates nothing
+    model: claude-sonnet-4-6
+    agent: claude_code
+    oauthToken: "REPLACE_ME"        # Claude Code OAuth token
+    databaseUrl: "REPLACE_ME"       # postgresql://USER:PASSWORD@ssd-db:5432/DBNAME
+  ## Secret consumed by pentestgpt-wrapper (env CLAUDE_CODE_OAUTH_TOKEN)
+  pentestgpt:
+    create: true
+    existingSecret: ""
+    oauthToken: "REPLACE_ME"
+  ## Secret mounted by pentestgpt-wrapper at /home/pentester/.claude (.credentials.json)
+  claudeCredentials:
+    create: true
+    existingSecret: ""
+    json: ""                        # content of .credentials.json; pass with --set-file
+  ## Credentials for the ssdVuln service, added to the supplychain-api secret (app-config.yaml).
+  ## Set both or neither. The URL itself is supplychainapi.ssdVuln (must not contain credentials).
+  ## Credentials for toolchain.ossSvc, added to the tool-chain secret. Set both or neither.
+  toolchain:
+    ossSvcUsername: ""              # e.g. opsmxuser
+    ossSvcPassword: ""
+  supplychainApi:
+    ssdVulnUsername: ""             # e.g. opsmxuser
+    ssdVulnPassword: ""
+####################################################
 # Global variables can be accessed across all the charts including sub-charts
 global:
   #imageRegistry: quay.io
@@ -409,6 +446,10 @@ sourcescan:
   loglevel: info
 ###################################################################################################################
 supplychainapi:
+  ## Endpoints written to the supplychain-api config (empty = built-in default)
+  ssdVuln: ""        # default https://ssd.oss.opsmx.net ; NO credentials here, see aiSecrets.supplychainApi
+  aigAddress: ""     # default http://ai-guardian-api.<release namespace>.svc.cluster.local:8080
+  ssdApiMcp: ""      # default http://ssd-api-mcp:8080 (the ssd-api-mcp service)
   ## Image specific details
   image:
     repository: supplychain-api
@@ -643,6 +684,10 @@ tokenmachine:
   regenerateInterval: 10800
 ###################################################################################################################
 toolchain:
+  ## Endpoints written to the tool-chain config (rendered into the tool-chain Secret). Empty = built-in default.
+  ossSvc: ""                 # default https://ssd.oss.opsmx.net ; NO credentials here, see aiSecrets.toolchain
+  ssdVuln: ""                # default http://212.2.240.29:8900
+  pentestGPTServiceURL: ""   # default http://pentestgpt-wrapper.<release namespace>.svc.cluster.local:8080
   ## Image specific details
   image:
     repository: tool-chain

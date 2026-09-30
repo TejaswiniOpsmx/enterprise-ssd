@@ -6,15 +6,24 @@ graphQLAddr: http://dgraph-public:8080/graphql
 {{- end }}
 cloneRepoOnce: {{ .Values.toolchain.cloneRepoOnce }}
 logLevel: {{ .Values.toolchain.logLevel }}
-ossSvc: http://34.28.37.172:8070
+{{- /* ossSvc: URL from toolchain.ossSvc (no credentials allowed there); username/password from aiSecrets are URL-encoded and the value is quoted. This file is rendered into a Secret. */}}
+{{- $oss := default "https://ssd.oss.opsmx.net" .Values.toolchain.ossSvc }}
+{{- if not (regexMatch "^https?://[^@/\\s]+(/.*)?$" $oss) }}
+{{- fail "toolchain.ossSvc must be an http(s) URL without embedded credentials; set aiSecrets.toolchain.ossSvcUsername/ossSvcPassword instead" }}
+{{- end }}
+{{- $tc := .Values.aiSecrets.toolchain }}
+{{- if and $tc.ossSvcUsername $tc.ossSvcPassword }}
+{{- $oss = regexReplaceAll "^(https?://)" $oss (printf "${1}%s:%s@" (urlquery $tc.ossSvcUsername | replace "+" "%20") (urlquery $tc.ossSvcPassword | replace "+" "%20")) }}
+{{- end }}
+ossSvc: {{ $oss | quote }}
 kbUrl: https://ssd.kb.opsmx.net
-ssdVuln: http://212.2.240.29:8900
+ssdVuln: {{ default "http://212.2.240.29:8900" .Values.toolchain.ssdVuln | quote }}
 mobsfClentAddr: http://mobsf-service:8000
 otelAddr: localhost:4317
 otelInterval: {{ .Values.otel.interval }}
 sonarQubeCreated: {{ .Values.toolchain.fetchsonardata }}
 licenseGenSvc: http://ssd-license-generator:8080
-pentestGPTServiceURL: http://pentestgpt-wrapper.may-dev.svc.cluster.local:8080
+pentestGPTServiceURL: {{ default (printf "http://pentestgpt-wrapper.%s.svc.cluster.local:8080" .Release.Namespace) .Values.toolchain.pentestGPTServiceURL | quote }}
 maxConcurrentArtifactWorkflowTaskExecutionSize: 0 # optional field; default is 0 which means maximum
 maxConcurrentSourceWorkflowTaskExecutionSize: 0 # optional field; default is 0 which means maximum
 aibomServiceAddr: "http://aibom-service:8082"

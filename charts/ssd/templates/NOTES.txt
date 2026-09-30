@@ -13,3 +13,17 @@ Thank you for installing Secure Software Delivery (SSD) platform from OpsMx
 
 {{- end }}
     You can login with admin and admin-password stored in ssd-initial-passwords secret
+
+{{- $ai := .Values.aiSecrets }}
+{{- $skipped := list }}
+{{- if and $ai.airemediation.create (not $ai.airemediation.existingSecret) (or (eq $ai.airemediation.oauthToken "REPLACE_ME") (eq $ai.airemediation.databaseUrl "REPLACE_ME")) }}{{- $skipped = append $skipped "ai-guardian-remediation-secret" }}{{- end }}
+{{- if and $ai.pentestgpt.create (not $ai.pentestgpt.existingSecret) (eq $ai.pentestgpt.oauthToken "REPLACE_ME") }}{{- $skipped = append $skipped "pentestgpt-secret" }}{{- end }}
+{{- if and $ai.claudeCredentials.create (not $ai.claudeCredentials.existingSecret) (not $ai.claudeCredentials.json) }}{{- $skipped = append $skipped "claude-credentials" }}{{- end }}
+{{- if $skipped }}
+
+WARNING: these AI secrets were NOT created because aiSecrets values are still placeholders: {{ join ", " $skipped }}
+Create them yourself, or install with
+  -f ai-secrets.local.yaml --set-file aiSecrets.claudeCredentials.json=$HOME/.claude/.credentials.json
+(ai-secrets.local.yaml is a copy of ai-secrets.example.yaml with real values).
+SECURITY: never commit or push files containing real tokens/passwords to any repository.
+{{- end }}

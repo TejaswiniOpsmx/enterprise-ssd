@@ -1,10 +1,10 @@
 apiVersion: v1
-kind: ConfigMap
+kind: Secret
 metadata:
   name: tool-chain
   labels:
     app: ssd
 {{ include "ssd.standard-labels" . | indent 4 }}
     component: toolchain
-data:
+stringData:
 {{ (tpl (.Files.Glob "config/toolchain/tool-chain.yaml").AsConfig . ) | indent 2 }}

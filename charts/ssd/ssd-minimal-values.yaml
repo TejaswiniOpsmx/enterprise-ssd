@@ -67,6 +67,21 @@ supplychainapi:
 installAimlSvcs: false
 
 ################################################################################################
+## Secrets for the AI services (ai-guardian-remediation and pentestgpt-wrapper) ################
+## !!! SECURITY: do NOT put real tokens/passwords in this file or commit them to any repo. ####
+## Put the real values in ai-secrets.local.yaml (git-ignored, copy of ai-secrets.example.yaml) ##
+## and install with:                                                                          ##
+##   -f ai-secrets.local.yaml --set-file aiSecrets.claudeCredentials.json=$HOME/.claude/.credentials.json
+## To use secrets you created yourself, uncomment the existingSecret lines below.             ##
+## See AI-SECRETS.md for the step by step guide.                                              ##
+#aiSecrets:
+#  airemediation:
+#    existingSecret: ""   # e.g. my-remediation-secret
+#  pentestgpt:
+#    existingSecret: ""   # e.g. my-pentestgpt-secret
+#  claudeCredentials:
+#    existingSecret: ""   # e.g. my-claude-credentials
+################################################################################################
 #### Change to false if user want to Use AWS S3 bucket to store the scan data ##################
 minio:
   enabled: true
