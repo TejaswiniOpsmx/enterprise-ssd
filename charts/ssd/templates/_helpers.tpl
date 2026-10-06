@@ -432,6 +432,16 @@ Return the proper PENTESTGPT WRAPPER Image
 {{- end -}}
 
 {{/*
+Return the proper AWS POLLER Image
+*/}}
+{{- define "awspoller.image" -}}
+{{- $registryName := .Values.imageCredentials.registry -}}
+{{- $repositoryName := .Values.awspoller.image.repository -}}
+{{- $tag := .Values.awspoller.image.tag | toString -}}
+{{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
+{{- end -}}
+
+{{/*
 Return the proper CHECKMARX WRAPPER Image
 */}}
 {{- define "checkmarx.image" -}}

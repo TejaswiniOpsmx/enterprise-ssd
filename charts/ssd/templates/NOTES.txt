@@ -19,6 +19,7 @@ Thank you for installing Secure Software Delivery (SSD) platform from OpsMx
 {{- if and $ai.airemediation.create (not $ai.airemediation.existingSecret) (or (eq $ai.airemediation.oauthToken "REPLACE_ME") (eq $ai.airemediation.databaseUrl "REPLACE_ME")) }}{{- $skipped = append $skipped "ai-guardian-remediation-secret" }}{{- end }}
 {{- if and $ai.pentestgpt.create (not $ai.pentestgpt.existingSecret) (eq $ai.pentestgpt.oauthToken "REPLACE_ME") }}{{- $skipped = append $skipped "pentestgpt-secret" }}{{- end }}
 {{- if and $ai.claudeCredentials.create (not $ai.claudeCredentials.existingSecret) (not $ai.claudeCredentials.json) }}{{- $skipped = append $skipped "claude-credentials" }}{{- end }}
+{{- if and $ai.aig.create (not $ai.aig.existingSecret) (eq $ai.aig.tenantApiKey "REPLACE_ME") (or .Values.supplychainapi.aigNamespace .Values.supplychainapi.aigAddress) }}{{- $skipped = append $skipped "aig-api-key" }}{{- end }}
 {{- if $skipped }}
 
 WARNING: these AI secrets were NOT created because aiSecrets values are still placeholders: {{ join ", " $skipped }}

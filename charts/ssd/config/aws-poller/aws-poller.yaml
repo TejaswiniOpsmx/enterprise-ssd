@@ -1,0 +1,10 @@
+s3BucketRegion: {{ required "awspoller.s3.region is required when awspoller.enabled=true" .Values.awspoller.s3.region | quote }}
+s3BucketName: {{ required "awspoller.s3.bucketName is required when awspoller.enabled=true" .Values.awspoller.s3.bucketName | quote }}
+toolChainAddr: http://tool-chain:8100/
+ssdOpaAddr: http://ssd-opa:8200/
+{{- if .Values.dgraph.HA.enabled }}
+graphQLAddr: http://dgraph-alpha-public:8080/graphql
+{{- else }}
+graphQLAddr: http://dgraph-public:8080/graphql
+{{- end }}
+scheduleDays: {{ .Values.awspoller.scheduleDays }}

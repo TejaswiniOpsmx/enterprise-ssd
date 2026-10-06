@@ -13,6 +13,11 @@ ssdVuln: http://212.2.240.29:8900
 aibomService: http://aibom-service:8082
 hbomGenerator: http://hbom-generator:8090
 ssdApiMcp: http://localhost:9010
+{{- if .Values.supplychainapi.aigAddress }}
+aigAddress: {{ .Values.supplychainapi.aigAddress }}
+{{- else if .Values.supplychainapi.aigNamespace }}
+aigAddress: http://ai-guardian-api.{{ .Values.supplychainapi.aigNamespace }}.svc.cluster.local:8080
+{{- end }}
 audit:
   enabled: true
 tokenMachine:

@@ -13,6 +13,7 @@ This guide explains how to provide the secrets used by the AI services
 |---|---|---|---|
 | `ai-guardian-remediation-secret` | ai-guardian-remediation (`envFrom`) | `CLAUDE_CODE_MODEL`, `REMEDIATION_AGENT`, `CLAUDE_CODE_OAUTH_TOKEN`, `DATABASE_URL` | `aiSecrets.airemediation` |
 | `pentestgpt-secret` | pentestgpt-wrapper (env `CLAUDE_CODE_OAUTH_TOKEN`) | `CLAUDE_CODE_OAUTH_TOKEN` | `aiSecrets.pentestgpt` |
+| `aig-api-key` | supplychain-api (env `TenantApiKey`, optional) | `TenantApiKey` | `aiSecrets.aig` |
 | `claude-credentials` | pentestgpt-wrapper (mounted at `/home/pentester/.claude`) | `.credentials.json` | `aiSecrets.claudeCredentials` |
 
 A secret is created only when its values are no longer the `REPLACE_ME`
@@ -60,7 +61,7 @@ ls -l $HOME/.claude/.credentials.json
 helm template ssd . -f ai-secrets.local.yaml \
   --set-file aiSecrets.claudeCredentials.json=$HOME/.claude/.credentials.json \
   -s templates/ai-guardian/secret.yaml \
-  -s templates/pentestgpt-wrapper/secrets.yaml
+  -s templates/pentestgpt-wrapper/pentestgpt-wrapper-secret.yaml
 ```
 
 This prints secret contents, so do not paste the output anywhere shared.
@@ -118,49 +119,25 @@ helm upgrade --install ssd . -n <namespace> \
 When `existingSecret` is set, the chart creates nothing for that secret and the
 deployment uses the name you give.
 
-## supplychain-api endpoints (`aigAddress`, `ssdApiMcp`, `ssdVuln`)
+## AI Guardian (AIG) integration
 
-These are written into the `supplychain-api` secret (`app-config.yaml`).
-
-| Key | Values key | Default |
-|---|---|---|
-| `ssdVuln` | `supplychainapi.ssdVuln` (URL only) | `https://ssd.oss.opsmx.net` |
-| `aigAddress` | `supplychainapi.aigAddress` | `http://ai-guardian-api.<release namespace>.svc.cluster.local:8080` |
-| `ssdApiMcp` | `supplychainapi.ssdApiMcp` | `http://ssd-api-mcp:8080` |
-
-The final `ssdVuln` value is `https://<user>:<password>@ssd.oss.opsmx.net`.
-**Never put the credentials in the URL in a values file.** The chart rejects a URL
-containing `user:pass@`. Put them in `ai-secrets.local.yaml`:
+Install AIG first (https://github.com/OpsMx/AI-Guardian-HelmChart), then enable it in SSD:
 
 ```yaml
+# ai-secrets.local.yaml (git-ignored)
+supplychainapi:
+  aigNamespace: "<AIG-NAMESPACE>"
 aiSecrets:
-  supplychainApi:
-    ssdVulnUsername: "opsmxuser"
-    ssdVulnPassword: "<password>"
+  aig:
+    tenantApiKey: "<same tenant API key as configured in AIG>"
 ```
 
-The chart URL-encodes both values, adds them to the URL and quotes the result, so
-special characters (`@ : # "`) cannot break the config. Set both or neither.
-The result lives only in the `supplychain-api` Secret, and pods restart on change
-through the existing `checksum/secret` annotation. This key cannot use
-`existingSecret`, because it is one entry in the generated `app-config.yaml`.
-
-## toolchain `ossSvc`
-
-The final value is `https://<user>:<password>@ssd.oss.opsmx.net`. Because it holds a
-password, the `tool-chain` config is now rendered as a **Secret** (it was a
-ConfigMap) and mounted at the same path, `/tools/config/tool-chain.yaml`.
-The URL is `toolchain.ossSvc` (default `https://ssd.oss.opsmx.net`, credentials
-are rejected there). The credentials go in `ai-secrets.local.yaml`:
-
-```yaml
-aiSecrets:
-  toolchain:
-    ossSvcUsername: "opsmxuser"
-    ossSvcPassword: "<password>"
-```
-
-They are URL-encoded and quoted like `ssdVuln`. Set both or neither.
+The chart then creates `aig-api-key` in the release namespace, adds the `TenantApiKey` env
+to supplychain-api and writes `aigAddress`
+(`http://ai-guardian-api.<aigNamespace>.svc.cluster.local:8080`, or `supplychainapi.aigAddress`
+if set) into its config. To manage the secret yourself, set `aiSecrets.aig.existingSecret`
+(key `TenantApiKey`). Nothing is added unless `aigNamespace` or `aigAddress` is set, and the key
+is never stored in `values.yaml`.
 
 ## Rotating a secret
 
@@ -173,8 +150,6 @@ They are URL-encoded and quoted like `ssdVuln`. Set both or neither.
 
 ## Notes
 
-- Chart-created secrets carry `helm.sh/resource-policy: keep`, so
-  `helm uninstall` leaves them in the cluster. Delete them manually if unwanted.
 - The secret references in the deployments are `optional`, so the pods start
   even if a secret is missing, but the AI features will not work until it exists.
 - Before pushing, run `git status` and confirm only `ai-secrets.example.yaml`

@@ -77,14 +77,19 @@ aiSecrets:
     create: true
     existingSecret: ""
     oauthToken: "REPLACE_ME"
+  ## AI Guardian (AIG) tenant API key, consumed by supplychain-api as env TenantApiKey.
+  ## The key must be the same value configured as the tenant API key on the AIG side.
+  ## Created in the release namespace only when tenantApiKey is changed from REPLACE_ME.
+  ## Put the real value only in ai-secrets.local.yaml (or use --set-file / existingSecret).
+  aig:
+    create: true
+    existingSecret: ""              # name of your own secret (key: TenantApiKey); the chart then creates nothing
+    tenantApiKey: "REPLACE_ME"
   ## Secret mounted by pentestgpt-wrapper at /home/pentester/.claude (.credentials.json)
   claudeCredentials:
     create: true
     existingSecret: ""
     json: ""                        # content of .credentials.json; pass with --set-file
-  ## Credentials for the ssdVuln service, added to the supplychain-api secret (app-config.yaml).
-  ## Set both or neither. The URL itself is supplychainapi.ssdVuln (must not contain credentials).
-  ## Credentials for toolchain.ossSvc, added to the tool-chain secret. Set both or neither.  
 ####################################################
 # Global variables can be accessed across all the charts including sub-charts
 global:
@@ -210,6 +215,41 @@ checkmarx:
 
   replicaCount: 1
 ############################################################################################################    
+#############################################################################################################
+awspoller:
+  # Disabled by default so existing installs are unaffected. Set to true and provide the s3 values below.
+  enabled: false
+  image:
+    repository: aws-poller
+    tag: "2026-08-00-rc4"
+    pullPolicy: IfNotPresent
+
+  replicaCount: 1
+
+  # Required when enabled (no default on purpose)
+  s3:
+    region: ""
+    bucketName: ""
+
+  scheduleDays: 1
+
+  # Preferred: IRSA / workload identity via ServiceAccount annotations,
+  # e.g. eks.amazonaws.com/role-arn: <role-arn>
+  serviceAccount:
+    create: false
+    annotations: {}
+
+  # Optional: reference a pre-created Secret holding static AWS credentials (never put values here).
+  awsCredentialsSecret:
+    name: ""
+    accessKeyIdKey: AWS_ACCESS_KEY_ID
+    secretAccessKeyKey: AWS_SECRET_ACCESS_KEY
+
+  annotations: {}
+
+  resources: {}
+
+  securityContext: {}
 curl:
   image:
     repository: curl
@@ -450,6 +490,10 @@ sourcescan:
   loglevel: info
 ###################################################################################################################
 supplychainapi:
+  ## AI Guardian integration (optional). Set aigNamespace (or a full aigAddress) to enable;
+  ## then supplychain-api gets aigAddress in app-config.yaml and the TenantApiKey env (see aiSecrets.aig).
+  aigNamespace: ""
+  aigAddress: ""      # default when aigNamespace is set: http://ai-guardian-api.<aigNamespace>.svc.cluster.local:8080
   ## Image specific details
   image:
     repository: supplychain-api

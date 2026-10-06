@@ -121,9 +121,9 @@ ui:
   serviceAnnotations:
     awsAnnotationsGo: HERE
 
-aws-poller:
+awspoller:
   image:
-    tag: "2026-08-00-rc3"
+    tag: "2026-08-00-rc4"
 
 kubernetes-detector:
   image:

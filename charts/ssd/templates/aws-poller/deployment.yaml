@@ -1,0 +1,126 @@
+{{- if .Values.awspoller.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aws-poller
+  labels:
+    app: ssd
+    component: aws-poller
+{{ include "ssd.standard-labels" . | indent 4 }}
+spec:
+  replicas: {{ .Values.awspoller.replicaCount }}
+  selector:
+    matchLabels:
+      app: ssd
+      component: aws-poller
+  template:
+    metadata:
+      labels:
+        app: ssd
+        component: aws-poller
+{{ include "ssd.standard-labels" . | indent 8 }}
+      annotations:
+        checksum/configmap: {{ include (print $.Template.BasePath "/aws-poller/configmap.yaml") . | sha256sum }}
+{{- if .Values.awspoller.annotations }}
+{{ toYaml .Values.awspoller.annotations | indent 8 }}
+{{- end }}
+    spec:
+      {{- if .Values.awspoller.serviceAccount.create }}
+      serviceAccountName: aws-poller
+      {{- end }}
+      containers:
+        - name: aws-poller
+          image: {{ template "awspoller.image" . }}
+          imagePullPolicy: {{ .Values.awspoller.image.pullPolicy }}
+          {{- if .Values.awspoller.awsCredentialsSecret.name }}
+          env:
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.awspoller.awsCredentialsSecret.name }}
+                  key: {{ .Values.awspoller.awsCredentialsSecret.accessKeyIdKey }}
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.awspoller.awsCredentialsSecret.name }}
+                  key: {{ .Values.awspoller.awsCredentialsSecret.secretAccessKeyKey }}
+          {{- end }}
+          volumeMounts:
+            - name: ssd-public-keys
+              mountPath: /app/ssd-public-keys
+            - name: ssdsecret
+              readOnly: true
+              mountPath: /app/secrets/
+            - name: token
+              readOnly: true
+              mountPath: /app/secrets/aws-poller-token/
+            - name: aws-poller-volume
+              mountPath: /app/config/aws-poller.yaml
+              subPath: aws-poller.yaml
+            - name: sbom
+              mountPath: /app/sbom
+          {{- with .Values.awspoller.probes }}
+          {{- toYaml . | nindent 10 }}
+          {{- end }}
+          {{- with .Values.awspoller.resources }}
+          resources:
+          {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- if .Values.awspoller.securityContext }}
+          securityContext:
+          {{- toYaml .Values.awspoller.securityContext | nindent 12 }}
+          {{- end }}
+      volumes:
+        - name: token
+          secret:
+            secretName: aws-poller-token
+            defaultMode: 420
+        - name: ssd-public-keys
+          configMap:
+            name: ssd-public-keys
+            defaultMode: 420
+        - name: ssdsecret
+          secret:
+            secretName: ssdsecret
+            items:
+              - key: AESEncryptionKey
+                path: ssdsecret/AESEncryptionKey
+            defaultMode: 420
+        - name: sbom
+          emptyDir: {}
+        - name: aws-poller-volume
+          configMap:
+            name: aws-poller
+            items:
+              - key: aws-poller.yaml
+                path: aws-poller.yaml
+            defaultMode: 420
+      {{- if .Values.imagePullSecret }}
+      imagePullSecrets:
+      - name: {{ .Values.imagePullSecret }}
+      {{- end }}
+      restartPolicy: Always
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      topologySpreadConstraints:
+        {{- if .Values.topologySpreadConstraints }}
+        {{- toYaml .Values.topologySpreadConstraints | nindent 8 }}
+        {{- else }}
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: ssd
+        {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

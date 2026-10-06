@@ -1,0 +1,12 @@
+{{- if .Values.awspoller.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aws-poller
+  labels:
+    app: ssd
+    component: aws-poller
+{{ include "ssd.standard-labels" . | indent 4 }}
+data:
+{{ (tpl (.Files.Glob "config/aws-poller/aws-poller.yaml").AsConfig . ) | indent 2 }}
+{{- end }}
