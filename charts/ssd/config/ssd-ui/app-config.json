@@ -31,5 +31,6 @@
     ],
     "enableSbomSca": true,
     "toolTransformationEnabled": true,
-    "hbomFeature": true
+    "hbomFeature": true,
+    "cbomRemediation": true
 }
