@@ -1,0 +1,72 @@
+# =============================================================================
+# REDIS CONFIGURATION (Shared by Consumer and Webhook)
+# =============================================================================
+REDIS_HOST: {{ .Release.Name }}-redis-master
+REDIS_PORT: "6379"
+REDIS_DB: "0"
+
+# =============================================================================
+# CONSUMER SERVICE CONFIGURATION
+# =============================================================================
+
+# Queue Configuration
+AUDIT_QUEUE_NAME: audit-events
+
+# Consumer Processing Settings
+CONSUMER_BATCH_SIZE: "10"
+CONSUMER_POLL_TIMEOUT: 5s
+CONSUMER_RETRY_ATTEMPTS: "3"
+CONSUMER_RETRY_DELAY: 1s
+
+# Hasura GraphQL Configuration
+HASURA_ENDPOINT: http://hasura:8080/v1/graphql
+HEALTH_CHECK_INTERVAL: 30s
+
+# JWT Public Keys Path (for token verification)
+SSD_PUBLIC_KEYS_PATH: /app/ssd-public-keys
+
+# =============================================================================
+# RBAC WEBHOOK CONFIGURATION
+# =============================================================================
+
+# Webhook Server Settings
+WEBHOOK_PORT: "8081"
+
+JWT_PUBLIC_KEYS_PATH: /app/ssd-public-keys
+
+# DGraph Service URL (for team resolution)
+DGRAPH_BASE_URL: http://dgraph-public:8080
+
+# RBAC Cache Configuration
+RBAC_CACHE_TTL_MINUTES: "10"
+
+# PostgreSQL Configuration (for partition management)
+POSTGRES_DATABASE: ssd
+POSTGRES_HOST: ssd-db
+POSTGRES_PORT: "5432"
+POSTGRES_SSL_MODE: disable
+
+# Partition Management Settings
+PARTITION_CRON_SCHEDULE: 0 5 * * *
+PARTITION_ENABLED: "true"
+PARTITION_INTERVAL: monthly
+PARTITION_LEAD_TIME_DAYS: "7"
+PARTITION_TABLE_NAME: audit_events
+
+# Logging Configuration
+LOG_FORMAT: json
+LOG_LEVEL: info
+
+# Health Check Configuration
+HEALTH_CHECK_INTERVAL: 30s
+READINESS_CHECK_INTERVAL: 5s
+
+# Resource Management
+MAX_CONCURRENT_PROCESSES: "10"
+GRACEFUL_SHUTDOWN_TIMEOUT: 30s
+
+# =============================================================================
+# GRPC CONFIGURATION
+# =============================================================================
+GRPC_ENABLED: "true"
+GRPC_PORT: "50051"

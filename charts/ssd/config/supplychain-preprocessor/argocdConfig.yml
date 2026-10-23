@@ -1,0 +1,17 @@
+rabbitmq:
+  queue: argo-ssd
+  exchange: argo.events
+  bindingKey: argo-ssd
+  prefetchCount: 50
+
+graphql:
+  {{- if .Values.dgraph.HA.enabled }}
+  host: http://dgraph-alpha-public
+  {{- else }}
+  host: http://dgraph-public
+  {{- end }}
+  port: 8080
+
+supplychainapi:
+  host: http://supplychain-api
+  port: 8099

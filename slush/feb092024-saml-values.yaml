@@ -1,0 +1,27 @@
+#####################################################
+# This file contains Feb092024 configuration for using
+# SSD with SAML authentication e.g with Okta SAML 2.0
+#####################################################
+
+#k8sServiceType: LoadBalancer
+####################################################
+# Global variables can be accessed across all the charts including sub-charts
+global:
+  # If cert-manager is installed, TLS secrets will created automatically, as an 'Issuer' will be created
+  certManager:  # set to true if cert-manager is installed
+    installed: true
+  createIngress: true
+
+  oesUI: # URL used to access the application
+    protocol: https
+    host: feb09-ssd.ryzon7-isd40.opsmx.org 
+
+###############################################################################
+ssdgate:
+  installDex: false
+  createGateDexSecret: false
+  auth_type: saml  # saml, dex-oidc and poclogin are other valid values
+  saml:
+    # OKTA-ksrinimba App: feb09-ssd
+    metadata_url: https://dev-14704582.okta.com/app/exkf26qs6f8FdWJ3r5d7/sso/saml/metadata
+    saml_initiated_login: true

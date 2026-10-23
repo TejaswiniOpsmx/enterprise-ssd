@@ -1,0 +1,13 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: ssd-ingress
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`SSD-DNS-VALUE`)
+      kind: Rule
+      services:
+        - name: ssd-ui 
+          port: 8080

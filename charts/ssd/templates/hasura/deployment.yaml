@@ -1,0 +1,233 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hasura
+  labels:
+    app: ssd
+    component: hasura
+{{ include "ssd.standard-labels" . | indent 4 }}
+spec:
+  replicas: {{ .Values.hasura.replicaCount }}
+  selector:
+    matchLabels:
+      app: ssd
+      component: hasura
+  template:
+    metadata:
+      labels:
+        app: ssd
+        component: hasura
+{{- if .Values.customLabels }}
+{{ toYaml .Values.customLabels | indent 8}}
+{{- end }}
+      annotations:
+{{- if .Values.hasura.annotations -}}
+        {{ toYaml .Values.hasura.annotations | nindent 8 }}
+{{- end }}
+    spec:
+      initContainers:
+      - name: db-init
+        image: postgres:15-alpine
+        command:
+        - /bin/bash
+        - /scripts/init-db.sh
+        env:
+        - name: PGHOST
+          value: ssd-db
+        - name: PGPORT
+          value: "5432"
+        - name: PGDATABASE
+          value: ssd
+        - name: PGUSER
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: db-secret
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: db-secret
+        resources: {}
+        volumeMounts:
+        - mountPath: /scripts
+          name: db-init-scripts
+      containers:
+      - name: hasura
+        image: hasura/graphql-engine:v2.48.5
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        args:
+        - serve
+        command:
+        - graphql-engine
+        env:
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: db-secret
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: db-secret
+        - name: HASURA_GRAPHQL_DATABASE_URL
+          value: postgres://$(DB_USERNAME):$(DB_PASSWORD)@ssd-db:5432/ssd
+        - name: HASURA_GRAPHQL_METADATA_DATABASE_URL
+          value: postgres://$(DB_USERNAME):$(DB_PASSWORD)@ssd-db:5432/postgres
+        - name: HASURA_GRAPHQL_ADMIN_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: admin-secret
+              name: hasura-admin-secret
+        - name: HASURA_GRAPHQL_METADATA_DIR
+          value: /hasura-metadata
+        - name: HASURA_GRAPHQL_AUTH_HOOK
+          value: http://localhost:8081/rbac/teams
+        - name: HASURA_GRAPHQL_AUTH_HOOK_MODE
+          value: POST
+        envFrom:
+        - configMapRef:
+            name: hasura-config
+        {{- with .Values.hasura.probes }}
+        {{- toYaml . | nindent 10 }}
+        {{- else }}
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+            scheme: HTTP
+          periodSeconds: 10
+          timeoutSeconds: 5
+          initialDelaySeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 5
+        {{- end }}
+        volumeMounts:
+        - mountPath: /hasura-metadata
+          name: hasura-metadata
+        lifecycle:
+          postStart:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  echo "Waiting for Hasura to be ready..."
+                  until curl -f http://localhost:8080/healthz > /dev/null 2>&1; do
+                    echo "Waiting for Hasura..."
+                    sleep 5
+                  done
+                  echo "Hasura is ready, importing metadata..."
+                  curl -X POST \
+                    -H "Content-Type: application/json" \
+                    -H "X-Hasura-Admin-Secret: $HASURA_GRAPHQL_ADMIN_SECRET" \
+                    -d @/hasura-metadata/metadata.json \
+                    http://localhost:8080/v1/metadata
+                  echo "Metadata import completed"
+      - name: rbac-webhook
+        image: {{ template "ssdauditservice.image" . }}
+        env:
+        - name: SERVICE_MODE
+          value: webhook
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: redis-secret
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: db-secret
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: db-secret
+        envFrom:
+        - configMapRef:
+            name: ssd-audit-service-config
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /health
+            port: 8081
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          successThreshold: 1
+          timeoutSeconds: 5
+        ports:
+        - containerPort: 8081
+          name: webhook
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /health
+            port: 8081
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        volumeMounts:
+        - mountPath: /app/ssd-public-keys
+          name: ssd-public-keys
+      {{- with .Values.hasura.resources }}
+          resources:
+      {{ toYaml . | nindent 12 }}
+      {{- end }}
+          securityContext:
+      {{- if .Values.hasura.securityContext }}
+      {{ toYaml .Values.hasura.securityContext | nindent 12 }}
+      {{- end }}
+      volumes:
+        - name: ssd-public-keys
+          configMap:
+            name: ssd-public-keys
+            defaultMode: 420
+        - name: token
+          secret:
+            optional: true
+            secretName: hasura-token
+        - name: hasura-metadata
+          configMap:
+            defaultMode: 420
+            name: hasura-metadata-config
+        - name: db-init-scripts
+          configMap:
+            defaultMode: 493
+            name: ssd-audit-db-init
+      {{- if .Values.imagePullSecret }}
+      imagePullSecrets:
+      - name: {{ .Values.imagePullSecret }}
+      {{- end }}
+      restartPolicy: Always
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

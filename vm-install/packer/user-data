@@ -1,0 +1,29 @@
+#cloud-config
+users:
+  - default
+  - name: ubuntu
+    gecos: Ubuntu User
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    groups: users, admin
+    shell: /bin/bash
+    lock_passwd: true
+
+runcmd:
+  - mkdir -p /opt/opsmx
+  - cd /opt/opsmx
+  - echo "RELEASETAG=${RELEASETAG}"
+  - curl -fSL -o bundle-lite.sh "https://raw.githubusercontent.com/OpsMx/enterprise-ssd/ami_image_creation_v2/vm-install/image-setup/bundle-lite.sh"
+  - curl -fSL -o version.env "https://raw.githubusercontent.com/OpsMx/enterprise-ssd/ami_image_creation_v2/vm-install/image-setup/version.env"
+  - chmod +x bundle-lite.sh
+  - sed -i "s/^RELEASETAG=.*/RELEASETAG=ami_image_creation_v2/" version.env
+  - echo "current pwd..."
+  - pwd
+  - mkdir -p /opt/opsmx/images
+  - mount -t 9p -o trans=virtio,version=9p2000.L,cache=loose,access=any host_images /opt/opsmx/images
+  - ls -l /opt/opsmx/images
+  - ./bundle-lite.sh
+  - sudo docker images
+  - ./clean-before-build.sh
+  - rm -f bundle.sh version.env clean-before-build.sh
+  - sudo cloud-init clean
+  - sudo shutdown -h now

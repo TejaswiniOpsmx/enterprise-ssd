@@ -1,0 +1,48 @@
+ssd_baseurl: {{.Values.global.ssdUI.protocol}}://{{.Values.global.ssdUI.host}}
+{{- if .Values.ssdgate.home_page }}
+home_page: {{.Values.ssdgate.home_page }}
+{{- end }}
+{{- if .Values.ssdgate.session_timeout }}
+session_timeout: {{.Values.ssdgate.session_timeout }}
+{{- end }}
+{{- if .Values.ssdgate.skipstartcheck }}
+skipstartcheck: {{.Values.ssdgate.skipstartcheck }}
+{{- end }}
+{{- if .Values.ssdgate.dex_url }}
+dex_url: {{.Values.ssdgate.dex_url }}
+{{- end }}
+
+auth_type: {{.Values.ssdgate.auth_type}}
+audit:
+  enabled: true
+token_expiry_hours: {{.Values.ssdgate.uiteamtokenexpiry }}
+admin_groups:
+{{- toYaml .Values.ssdgate.admin_groups |nindent 0 }}
+
+saml:
+  metadata_url: {{ .Values.ssdgate.saml.metadata_url }}
+  {{- if .Values.ssdgate.saml.entity_id }}
+  entity_id: {{ .Values.ssdgate.saml.entity_id }}
+  {{- end }}
+  {{- if .Values.ssdgate.saml.acs_endpoint }}
+  acs_endpoint: {{ .Values.ssdgate.saml.acs_endpoint }}
+  {{- end }}
+  {{- if .Values.ssdgate.saml.saml_initiated_login }}
+  saml_initiated_login: {{ .Values.ssdgate.saml.saml_initiated_login }} # OPTIONAL Required for logging in from okta-tiles
+  {{- end }}
+  {{- if .Values.ssdgate.saml.sign_request }}
+  sign_request: {{ .Values.ssdgate.saml.sign_request }} # DEPENDS Default is false, make it match the SAML setting
+  {{- end }}
+  {{- if .Values.ssdgate.saml.metadata_File }}
+  metadata_File: {{ .Values.ssdgate.saml.metadata_File }}  # OPTIONAL One of metadata url or file required, url preferred
+  {{- end }}
+  {{- if .Values.ssdgate.saml.session_crt_file }}
+  session_crt_file: {{ .Values.ssdgate.saml.session_crt_file }} # OPTIONAL
+  {{- end }}
+  {{- if .Values.ssdgate.saml.session_key_file }}
+  session_key_file: {{ .Values.ssdgate.saml.session_key_file }} #  OPTIONAL
+  {{- end }}
+  {{- with .Values.ssdgate.saml.entity_map }}
+  entity_map:
+  {{- toYaml . | nindent 4 }}
+  {{- end }}

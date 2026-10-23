@@ -1,0 +1,18 @@
+server:
+  host: "0.0.0.0"             # Server bind address
+  port: 8080                   # HTTP port
+  read_timeout: 10s            # Maximum duration for reading the entire request
+  write_timeout: 10s           # Maximum duration before timing out writes of the response
+  idle_timeout: 120s           # Maximum amount of time to wait for the next request
+database:
+  path: "/app/data/badger"     # BadgerDB database directory path
+  # Note: BadgerDB is an embedded key-value store (no connection pooling needed)
+cache:
+  central_repo_url: "http://35.255.7.45:9000/fetch"  # Central license server URL
+  license_dir: "/app/data/licenses"                   # Directory for cached license files
+  template_dir: "/app/templates"                      # Directory for template files
+  max_age: 24h                                        # Maximum age before license is considered stale
+  http_timeout: 30s                                   # Timeout for HTTP requests to central server
+logging:
+  level: "info"                # Log level: debug, info, warn, error
+  format: "json"               # Log format: json, console (use console for development)

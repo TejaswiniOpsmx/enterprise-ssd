@@ -1,169 +1,180 @@
+{{/*
+Copyright Broadcom, Inc. All Rights Reserved.
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
 {{/* vim: set filetype=mustache: */}}
-{{/*
-Expand the name of the chart.
-*/}}
-{{- define "redis.name" -}}
-{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" -}}
-{{- end -}}
-
-{{/*
-Expand the chart plus release name (used by the chart label)
-*/}}
-{{- define "redis.chart" -}}
-{{- printf "%s-%s" .Chart.Name .Chart.Version -}}
-{{- end -}}
-
-{{/*
-Create a default fully qualified app name.
-We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
-If release name contains chart name it will be used as a full name.
-*/}}
-{{- define "redis.fullname" -}}
-{{- if .Values.fullnameOverride -}}
-{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" -}}
-{{- else -}}
-{{- $name := default .Chart.Name .Values.nameOverride -}}
-{{- if contains $name .Release.Name -}}
-{{- .Release.Name | trunc 63 | trimSuffix "-" -}}
-{{- else -}}
-{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" -}}
-{{- end -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
-Return the appropriate apiVersion for networkpolicy.
-*/}}
-{{- define "networkPolicy.apiVersion" -}}
-{{- if semverCompare ">=1.4-0, <1.7-0" .Capabilities.KubeVersion.GitVersion -}}
-{{- print "extensions/v1beta1" -}}
-{{- else -}}
-{{- print "networking.k8s.io/v1" -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
-Return the appropriate apiGroup for PodSecurityPolicy.
-*/}}
-{{- define "podSecurityPolicy.apiGroup" -}}
-{{- if semverCompare ">=1.14-0" .Capabilities.KubeVersion.GitVersion -}}
-{{- print "policy" -}}
-{{- else -}}
-{{- print "extensions" -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
-Return the appropriate apiVersion for PodSecurityPolicy.
-*/}}
-{{- define "podSecurityPolicy.apiVersion" -}}
-{{- if semverCompare ">=1.14-0" .Capabilities.KubeVersion.GitVersion -}}
-{{- print "policy/v1beta1" -}}
-{{- else -}}
-{{- print "extensions/v1beta1" -}}
-{{- end -}}
-{{- end -}}
 
 {{/*
 Return the proper Redis image name
 */}}
 {{- define "redis.image" -}}
-{{- $registryName := .Values.image.registry -}}
-{{- $repositoryName := .Values.image.repository -}}
-{{- $tag := .Values.image.tag | toString -}}
-{{/*
-Helm 2.11 supports the assignment of a value to a variable defined in a different scope,
-but Helm 2.9 and 2.10 doesn't support it, so we need to implement this if-else logic.
-Also, we can't use a single if because lazy evaluation is not an option
-*/}}
-{{- if .Values.global }}
-    {{- if .Values.global.imageRegistry }}
-        {{- printf "%s/%s:%s" .Values.global.imageRegistry $repositoryName $tag -}}
-    {{- else -}}
-        {{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
-    {{- end -}}
-{{- else -}}
-    {{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
-{{- end -}}
+{{ include "common.images.image" (dict "imageRoot" .Values.image "global" .Values.global) }}
 {{- end -}}
 
 {{/*
 Return the proper Redis Sentinel image name
 */}}
-{{- define "sentinel.image" -}}
-{{- $registryName := .Values.sentinel.image.registry -}}
-{{- $repositoryName := .Values.sentinel.image.repository -}}
-{{- $tag := .Values.sentinel.image.tag | toString -}}
-{{/*
-Helm 2.11 supports the assignment of a value to a variable defined in a different scope,
-but Helm 2.9 and 2.10 doesn't support it, so we need to implement this if-else logic.
-Also, we can't use a single if because lazy evaluation is not an option
-*/}}
-{{- if .Values.global }}
-    {{- if .Values.global.imageRegistry }}
-        {{- printf "%s/%s:%s" .Values.global.imageRegistry $repositoryName $tag -}}
-    {{- else -}}
-        {{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
-    {{- end -}}
-{{- else -}}
-    {{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
-{{- end -}}
+{{- define "redis.sentinel.image" -}}
+{{ include "common.images.image" (dict "imageRoot" .Values.sentinel.image "global" .Values.global) }}
 {{- end -}}
 
 {{/*
 Return the proper image name (for the metrics image)
 */}}
 {{- define "redis.metrics.image" -}}
-{{- $registryName := .Values.metrics.image.registry -}}
-{{- $repositoryName := .Values.metrics.image.repository -}}
-{{- $tag := .Values.metrics.image.tag | toString -}}
-{{/*
-Helm 2.11 supports the assignment of a value to a variable defined in a different scope,
-but Helm 2.9 and 2.10 doesn't support it, so we need to implement this if-else logic.
-Also, we can't use a single if because lazy evaluation is not an option
-*/}}
-{{- if .Values.global }}
-    {{- if .Values.global.imageRegistry }}
-        {{- printf "%s/%s:%s" .Values.global.imageRegistry $repositoryName $tag -}}
-    {{- else -}}
-        {{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
-    {{- end -}}
-{{- else -}}
-    {{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
-{{- end -}}
+{{ include "common.images.image" (dict "imageRoot" .Values.metrics.image "global" .Values.global) }}
 {{- end -}}
 
 {{/*
 Return the proper image name (for the init container volume-permissions image)
 */}}
 {{- define "redis.volumePermissions.image" -}}
-{{- $registryName := .Values.volumePermissions.image.registry -}}
-{{- $repositoryName := .Values.volumePermissions.image.repository -}}
-{{- $tag := .Values.volumePermissions.image.tag | toString -}}
+{{ include "common.images.image" (dict "imageRoot" .Values.volumePermissions.image "global" .Values.global) }}
+{{- end -}}
+
 {{/*
-Helm 2.11 supports the assignment of a value to a variable defined in a different scope,
-but Helm 2.9 and 2.10 doesn't support it, so we need to implement this if-else logic.
-Also, we can't use a single if because lazy evaluation is not an option
+Return kubectl image
 */}}
-{{- if .Values.global }}
-    {{- if .Values.global.imageRegistry }}
-        {{- printf "%s/%s:%s" .Values.global.imageRegistry $repositoryName $tag -}}
-    {{- else -}}
-        {{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
-    {{- end -}}
-{{- else -}}
-    {{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
+{{- define "redis.kubectl.image" -}}
+{{ include "common.images.image" (dict "imageRoot" .Values.kubectl.image "global" .Values.global) }}
+{{- end -}}
+
+{{/*
+Return sysctl image
+*/}}
+{{- define "redis.sysctl.image" -}}
+{{ include "common.images.image" (dict "imageRoot" .Values.sysctl.image "global" .Values.global) }}
+{{- end -}}
+
+{{/*
+Return the proper Docker Image Registry Secret Names
+*/}}
+{{- define "redis.imagePullSecrets" -}}
+{{- include "common.images.renderPullSecrets" (dict "images" (list .Values.image .Values.sentinel.image .Values.metrics.image .Values.volumePermissions.image .Values.sysctl.image) "context" $) -}}
+{{- end -}}
+
+{{/*
+Return true if a TLS secret object should be created
+*/}}
+{{- define "redis.createTlsSecret" -}}
+{{- if and .Values.tls.enabled .Values.tls.autoGenerated (and (not .Values.tls.existingSecret) (not .Values.tls.certificatesSecret)) }}
+    {{- true -}}
 {{- end -}}
 {{- end -}}
 
 {{/*
-Create the name of the service account to use
+Return the secret containing Redis TLS certificates
+*/}}
+{{- define "redis.tlsSecretName" -}}
+{{- $secretName := coalesce .Values.tls.existingSecret .Values.tls.certificatesSecret -}}
+{{- if $secretName -}}
+    {{- printf "%s" (tpl $secretName $) -}}
+{{- else -}}
+    {{- printf "%s-crt" (include "common.names.fullname" .) -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Return the path to the cert file.
+*/}}
+{{- define "redis.tlsCert" -}}
+{{- if (include "redis.createTlsSecret" . ) -}}
+    {{- printf "/opt/bitnami/redis/certs/%s" "tls.crt" -}}
+{{- else -}}
+    {{- required "Certificate filename is required when TLS in enabled" .Values.tls.certFilename | printf "/opt/bitnami/redis/certs/%s" -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Return the path to the cert key file.
+*/}}
+{{- define "redis.tlsCertKey" -}}
+{{- if (include "redis.createTlsSecret" . ) -}}
+    {{- printf "/opt/bitnami/redis/certs/%s" "tls.key" -}}
+{{- else -}}
+    {{- required "Certificate Key filename is required when TLS in enabled" .Values.tls.certKeyFilename | printf "/opt/bitnami/redis/certs/%s" -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Return the path to the CA cert file.
+*/}}
+{{- define "redis.tlsCACert" -}}
+{{- if (include "redis.createTlsSecret" . ) -}}
+    {{- printf "/opt/bitnami/redis/certs/%s" "ca.crt" -}}
+{{- else }}
+    {{- ternary "" (printf "/opt/bitnami/redis/certs/%s" .Values.tls.certCAFilename) (empty .Values.tls.certCAFilename) }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Return the path to the DH params file.
+*/}}
+{{- define "redis.tlsDHParams" -}}
+{{- if .Values.tls.dhParamsFilename -}}
+{{- printf "/opt/bitnami/redis/certs/%s" .Values.tls.dhParamsFilename -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Create the name of the shared service account to use
 */}}
 {{- define "redis.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create -}}
-    {{ default (include "redis.fullname" .) .Values.serviceAccount.name }}
+    {{ default (include "common.names.fullname" .) .Values.serviceAccount.name }}
 {{- else -}}
     {{ default "default" .Values.serviceAccount.name }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Create the name of the master service account to use
+*/}}
+{{- define "redis.masterServiceAccountName" -}}
+{{- if .Values.master.serviceAccount.create -}}
+    {{ default (printf "%s-master" (include "common.names.fullname" .)) .Values.master.serviceAccount.name }}
+{{- else -}}
+    {{- if .Values.serviceAccount.create -}}
+        {{ template "redis.serviceAccountName" . }}
+    {{- else -}}
+        {{ default "default" .Values.master.serviceAccount.name }}
+    {{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Create the name of the replicas service account to use
+*/}}
+{{- define "redis.replicaServiceAccountName" -}}
+{{- if .Values.replica.serviceAccount.create -}}
+    {{ default (printf "%s-replica" (include "common.names.fullname" .)) .Values.replica.serviceAccount.name }}
+{{- else -}}
+    {{- if .Values.serviceAccount.create -}}
+        {{ template "redis.serviceAccountName" . }}
+    {{- else -}}
+        {{ default "default" .Values.replica.serviceAccount.name }}
+    {{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Return the configuration configmap name
+*/}}
+{{- define "redis.configmapName" -}}
+{{- if .Values.existingConfigmap -}}
+    {{- printf "%s" (tpl .Values.existingConfigmap $) -}}
+{{- else -}}
+    {{- printf "%s-configuration" (include "common.names.fullname" .) -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Return true if a configmap object should be created
+*/}}
+{{- define "redis.createConfigmap" -}}
+{{- if empty .Values.existingConfigmap }}
+    {{- true -}}
 {{- end -}}
 {{- end -}}
 
@@ -171,185 +182,125 @@ Create the name of the service account to use
 Get the password secret.
 */}}
 {{- define "redis.secretName" -}}
-{{- if .Values.existingSecret -}}
-{{- printf "%s" .Values.existingSecret -}}
+{{- if .Values.auth.existingSecret -}}
+{{- printf "%s" (tpl .Values.auth.existingSecret $) -}}
 {{- else -}}
-{{- printf "%s" (include "redis.fullname" .) -}}
+{{- printf "%s" (include "common.names.fullname" .) -}}
 {{- end -}}
 {{- end -}}
 
 {{/*
-Get the password key to be retrieved from Redis secret.
+Get the password key to be retrieved from Redis&reg; secret.
 */}}
 {{- define "redis.secretPasswordKey" -}}
-{{- if and .Values.existingSecret .Values.existingSecretPasswordKey -}}
-{{- printf "%s" .Values.existingSecretPasswordKey -}}
+{{- if and .Values.auth.existingSecret .Values.auth.existingSecretPasswordKey -}}
+{{- printf "%s" (tpl .Values.auth.existingSecretPasswordKey $) -}}
 {{- else -}}
 {{- printf "redis-password" -}}
 {{- end -}}
 {{- end -}}
 
 {{/*
-Return Redis password
+Return Redis&reg; password
 */}}
 {{- define "redis.password" -}}
-{{- if not (empty .Values.global.redis.password) }}
-    {{- .Values.global.redis.password -}}
-{{- else if not (empty .Values.password) -}}
-    {{- .Values.password -}}
-{{- else -}}
-    {{- randAlphaNum 10 -}}
-{{- end -}}
-{{- end -}}
+{{- if or .Values.auth.enabled .Values.global.redis.password -}}
+    {{- include "common.secrets.passwords.manage" (dict "secret" (include "redis.secretName" .) "key" (include "redis.secretPasswordKey" .) "providedValues" (list "global.redis.password" "auth.password") "length" 10 "skipB64enc" true "skipQuote" true "honorProvidedValues" true "context" $) -}}
+{{- end }}
+{{- end }}
 
 {{/*
-Return sysctl image
+Returns the secret value if found or an empty string otherwise
+Used for fetching Redis ACL user passwords from Kubernetes Secrets
 */}}
-{{- define "redis.sysctl.image" -}}
-{{- $registryName :=  default "docker.io" .Values.sysctlImage.registry -}}
-{{- $repositoryName := .Values.sysctlImage.repository -}}
-{{- $tag := default "buster" .Values.sysctlImage.tag | toString -}}
-{{/*
-Helm 2.11 supports the assignment of a value to a variable defined in a different scope,
-but Helm 2.9 and 2.10 doesn't support it, so we need to implement this if-else logic.
-Also, we can't use a single if because lazy evaluation is not an option
-*/}}
-{{- if .Values.global }}
-    {{- if .Values.global.imageRegistry }}
-        {{- printf "%s/%s:%s" .Values.global.imageRegistry $repositoryName $tag -}}
-    {{- else -}}
-        {{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
-    {{- end -}}
+{{- define "common.secrets.get" -}}
+{{- $secret := (lookup "v1" "Secret" .context.Release.Namespace .secret) -}}
+{{- if and $secret (index $secret.data .key) -}}
+    {{- index $secret.data .key | b64dec -}}
 {{- else -}}
-    {{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
-Return the proper Docker Image Registry Secret Names
-*/}}
-{{- define "redis.imagePullSecrets" -}}
-{{/*
-Helm 2.11 supports the assignment of a value to a variable defined in a different scope,
-but Helm 2.9 and 2.10 does not support it, so we need to implement this if-else logic.
-Also, we can not use a single if because lazy evaluation is not an option
-*/}}
-{{- if .Values.global }}
-{{- if .Values.global.imagePullSecrets }}
-imagePullSecrets:
-{{- range .Values.global.imagePullSecrets }}
-  - name: {{ . }}
+    {{- "" -}}
 {{- end }}
-{{- else if or .Values.image.pullSecrets .Values.metrics.image.pullSecrets .Values.sysctlImage.pullSecrets .Values.volumePermissions.image.pullSecrets }}
-imagePullSecrets:
-{{- range .Values.image.pullSecrets }}
-  - name: {{ . }}
 {{- end }}
-{{- range .Values.metrics.image.pullSecrets }}
-  - name: {{ . }}
-{{- end }}
-{{- range .Values.sysctlImage.pullSecrets }}
-  - name: {{ . }}
-{{- end }}
-{{- range .Values.volumePermissions.image.pullSecrets }}
-  - name: {{ . }}
-{{- end }}
-{{- end -}}
-{{- else if or .Values.image.pullSecrets .Values.metrics.image.pullSecrets .Values.sysctlImage.pullSecrets .Values.volumePermissions.image.pullSecrets }}
-imagePullSecrets:
-{{- range .Values.image.pullSecrets }}
-  - name: {{ . }}
-{{- end }}
-{{- range .Values.metrics.image.pullSecrets }}
-  - name: {{ . }}
-{{- end }}
-{{- range .Values.sysctlImage.pullSecrets }}
-  - name: {{ . }}
-{{- end }}
-{{- range .Values.volumePermissions.image.pullSecrets }}
-  - name: {{ . }}
-{{- end }}
-{{- end -}}
-{{- end -}}
 
 {{/* Check if there are rolling tags in the images */}}
 {{- define "redis.checkRollingTags" -}}
-{{- if and (contains "bitnami/" .Values.image.repository) (not (.Values.image.tag | toString | regexFind "-r\\d+$|sha256:")) }}
-WARNING: Rolling tag detected ({{ .Values.image.repository }}:{{ .Values.image.tag }}), please note that it is strongly recommended to avoid using rolling tags in a production environment.
-+info https://docs.bitnami.com/containers/how-to/understand-rolling-tags-containers/
-{{- end }}
-{{- if and (contains "bitnami/" .Values.sentinel.image.repository) (not (.Values.sentinel.image.tag | toString | regexFind "-r\\d+$|sha256:")) }}
-WARNING: Rolling tag detected ({{ .Values.sentinel.image.repository }}:{{ .Values.sentinel.image.tag }}), please note that it is strongly recommended to avoid using rolling tags in a production environment.
-+info https://docs.bitnami.com/containers/how-to/understand-rolling-tags-containers/
-{{- end }}
+{{- include "common.warnings.rollingTag" .Values.image }}
+{{- include "common.warnings.rollingTag" .Values.sentinel.image }}
+{{- include "common.warnings.rollingTag" .Values.metrics.image }}
 {{- end -}}
 
 {{/*
-Return  the proper Storage Class for master
+Compile all warnings into a single message, and call fail.
 */}}
-{{- define "redis.master.storageClass" -}}
-{{/*
-Helm 2.11 supports the assignment of a value to a variable defined in a different scope,
-but Helm 2.9 and 2.10 does not support it, so we need to implement this if-else logic.
-*/}}
-{{- if .Values.global -}}
-    {{- if .Values.global.storageClass -}}
-        {{- if (eq "-" .Values.global.storageClass) -}}
-            {{- printf "storageClassName: \"\"" -}}
-        {{- else }}
-            {{- printf "storageClassName: %s" .Values.global.storageClass -}}
-        {{- end -}}
-    {{- else -}}
-        {{- if .Values.master.persistence.storageClass -}}
-              {{- if (eq "-" .Values.master.persistence.storageClass) -}}
-                  {{- printf "storageClassName: \"\"" -}}
-              {{- else }}
-                  {{- printf "storageClassName: %s" .Values.master.persistence.storageClass -}}
-              {{- end -}}
-        {{- end -}}
-    {{- end -}}
-{{- else -}}
-    {{- if .Values.master.persistence.storageClass -}}
-        {{- if (eq "-" .Values.master.persistence.storageClass) -}}
-            {{- printf "storageClassName: \"\"" -}}
-        {{- else }}
-            {{- printf "storageClassName: %s" .Values.master.persistence.storageClass -}}
-        {{- end -}}
-    {{- end -}}
+{{- define "redis.validateValues" -}}
+{{- $messages := list -}}
+{{- $messages := append $messages (include "redis.validateValues.architecture" .) -}}
+{{- $messages := append $messages (include "redis.validateValues.podSecurityPolicy.create" .) -}}
+{{- $messages := append $messages (include "redis.validateValues.tls" .) -}}
+{{- $messages := append $messages (include "redis.validateValues.createMaster" .) -}}
+{{- $messages := without $messages "" -}}
+{{- $message := join "\n" $messages -}}
+
+{{- if $message -}}
+{{-   printf "\nVALUES VALIDATION:\n%s" $message | fail -}}
 {{- end -}}
 {{- end -}}
 
-{{/*
-Return  the proper Storage Class for slave
-*/}}
-{{- define "redis.slave.storageClass" -}}
-{{/*
-Helm 2.11 supports the assignment of a value to a variable defined in a different scope,
-but Helm 2.9 and 2.10 does not support it, so we need to implement this if-else logic.
-*/}}
-{{- if .Values.global -}}
-    {{- if .Values.global.storageClass -}}
-        {{- if (eq "-" .Values.global.storageClass) -}}
-            {{- printf "storageClassName: \"\"" -}}
-        {{- else }}
-            {{- printf "storageClassName: %s" .Values.global.storageClass -}}
-        {{- end -}}
-    {{- else -}}
-        {{- if .Values.slave.persistence.storageClass -}}
-              {{- if (eq "-" .Values.slave.persistence.storageClass) -}}
-                  {{- printf "storageClassName: \"\"" -}}
-              {{- else }}
-                  {{- printf "storageClassName: %s" .Values.slave.persistence.storageClass -}}
-              {{- end -}}
-        {{- end -}}
-    {{- end -}}
-{{- else -}}
-    {{- if .Values.slave.persistence.storageClass -}}
-        {{- if (eq "-" .Values.slave.persistence.storageClass) -}}
-            {{- printf "storageClassName: \"\"" -}}
-        {{- else }}
-            {{- printf "storageClassName: %s" .Values.slave.persistence.storageClass -}}
-        {{- end -}}
-    {{- end -}}
+{{/* Validate values of Redis&reg; - must provide a valid architecture */}}
+{{- define "redis.validateValues.architecture" -}}
+{{- if and (ne .Values.architecture "standalone") (ne .Values.architecture "replication") -}}
+redis: architecture
+    Invalid architecture selected. Valid values are "standalone" and
+    "replication". Please set a valid architecture (--set architecture="xxxx")
+{{- end -}}
+{{- if and .Values.sentinel.enabled (not (eq .Values.architecture "replication")) }}
+redis: architecture
+    Using redis sentinel on standalone mode is not supported.
+    To deploy redis sentinel, please select the "replication" mode
+    (--set "architecture=replication,sentinel.enabled=true")
 {{- end -}}
 {{- end -}}
+
+{{/* Validate values of Redis&reg; - PodSecurityPolicy create */}}
+{{- define "redis.validateValues.podSecurityPolicy.create" -}}
+{{- if and .Values.podSecurityPolicy.create (not .Values.podSecurityPolicy.enabled) }}
+redis: podSecurityPolicy.create
+    In order to create PodSecurityPolicy, you also need to enable
+    podSecurityPolicy.enabled field
+{{- end -}}
+{{- end -}}
+
+{{/* Validate values of Redis&reg; - TLS enabled */}}
+{{- define "redis.validateValues.tls" -}}
+{{- if and .Values.tls.enabled (not .Values.tls.autoGenerated) (not .Values.tls.existingSecret) (not .Values.tls.certificatesSecret) }}
+redis: tls.enabled
+    In order to enable TLS, you also need to provide
+    an existing secret containing the TLS certificates or
+    enable auto-generated certificates.
+{{- end -}}
+{{- end -}}
+
+{{/* Validate values of Redis&reg; - master service enabled */}}
+{{- define "redis.validateValues.createMaster" -}}
+{{- if and (or .Values.sentinel.masterService.enabled .Values.sentinel.service.createMaster) (or (not .Values.rbac.create) (not .Values.replica.automountServiceAccountToken) (not .Values.serviceAccount.create)) }}
+redis: sentinel.masterService.enabled
+    In order to redirect requests only to the master pod via the service, you also need to
+    create rbac and serviceAccount. In addition, you need to enable
+    replica.automountServiceAccountToken.
+{{- end -}}
+{{- end -}}
+
+{{/* Define the suffix utilized for external-dns */}}
+{{- define "redis.externalDNS.suffix" -}}
+{{ printf "%s.%s" (include "common.names.fullname" .) .Values.useExternalDNS.suffix }}
+{{- end -}}
+
+{{/* Compile all annotations utilized for external-dns */}}
+{{- define "redis.externalDNS.annotations" -}}
+{{- if and .Values.useExternalDNS.enabled .Values.useExternalDNS.annotationKey }}
+{{ .Values.useExternalDNS.annotationKey }}hostname: {{ include "redis.externalDNS.suffix" . }}
+{{- range $key, $val := .Values.useExternalDNS.additionalAnnotations }}
+{{ $.Values.useExternalDNS.annotationKey }}{{ $key }}: {{ $val | quote }}
+{{- end }}
+{{- end }}
+{{- end }}

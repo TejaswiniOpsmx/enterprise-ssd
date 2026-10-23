@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    acme.cert-manager.io/http01-edit-in-place: "true"
+    cert-manager.io/issue-temporary-certificate: "true"
+    cert-manager.io/issuer: letsencrypt-poc-ssd-spin
+    kubernetes.io/ingress.class: nginx
+    kubernetes.io/tls-acme: "true"
+  name: ssd-ingress
+  namespace: argocd-ssd  # Change this
+spec:
+  rules:
+  - host: <your host-name, fully qualified e.g. ssd.opsmx.com>     # Change this
+    http:
+      paths:
+      - backend:
+          service:
+            name: oes-ui
+            port:
+              number: 8080
+        path: /
+        pathType: ImplementationSpecific
+  tls:
+  - hosts:
+    - <your host-name, fully qualified e.g. ssd.opsmx.com>
+    secretName: ssd-ui-ingress

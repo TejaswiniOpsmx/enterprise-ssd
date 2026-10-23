@@ -1,0 +1,13 @@
+httpListenPort: 8400
+logLevel: {{ .Values.prismiac.logLevel }}
+{{- if .Values.dgraph.HA.enabled }}
+graphQLAddr: http://dgraph-alpha-public:8080/graphql
+{{- else }}
+graphQLAddr: http://dgraph-public:8080/graphql
+{{- end }}
+maxConcurrentActivityExecutionSize: 0 # optional field; default is 0 which means maximum
+maxConcurrentWorkflowTaskExecutionSize: 0 # optional field; default is 0 which means maximum
+temporalHostPort: {{ .Release.Name }}-temporal-frontend:7233
+internalTokenPath: /app/secrets/prism-iac-token/token #default
+ssdPublicKeysPath: /app/ssd-public-keys #default
+ssdOpaAddr: http://ssd-opa:8200/ #default

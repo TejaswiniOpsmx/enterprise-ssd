@@ -1,0 +1,16 @@
+ui:
+  image:
+    tag: 202401291259-ssd
+toolchain:
+  image:
+    tag: v1.3.1
+ssdopa:
+  image:
+    tag: v1.3.1
+supplychainpreprocessor:
+  image:
+    tag: v0.7.3
+supplychainapi:
+  image:
+    tag: v0.4.1
+

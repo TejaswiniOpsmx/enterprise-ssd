@@ -1,0 +1,8 @@
+toolChainAddr: http://tool-chain:8100/
+ssdOpaAddr: http://ssd-opa:8200/ #default
+{{- if .Values.dgraph.HA.enabled }}
+graphQLAddr: http://dgraph-alpha-public:8080/graphql
+{{- else }}
+graphQLAddr: http://dgraph-public:8080/graphql
+{{- end }}
+scheduleIntervalDay: 1

@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: ssd
+    component: ai-guardian-remediation
+{{ include "ssd.standard-labels" . | indent 4 }}
+{{- if .Values.airemediation.serviceAnnotations }}
+  annotations:
+{{ toYaml .Values.airemediation.serviceAnnotations | indent 4 }}
+{{- end }}
+  name: ai-guardian-remediation
+spec:
+  ports:
+  - name: ai-guardian-remediation
+    port: 8588
+    protocol: TCP
+    targetPort: 8588
+  selector:
+    app: ssd
+    component: ai-guardian-remediation

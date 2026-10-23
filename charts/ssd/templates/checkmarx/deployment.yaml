@@ -1,0 +1,111 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: checkmarx-poller
+  labels:
+    app: ssd
+    component: checkmarx-poller
+{{ include "ssd.standard-labels" . | indent 4 }}
+spec:
+  replicas: {{ .Values.prismiac.replicaCount }}
+  selector:
+    matchLabels:
+      app: ssd
+      component: checkmarx-poller
+  template:
+    metadata:
+      labels:
+        app: ssd
+        component: checkmarx-poller
+{{- if .Values.customLabels }}
+{{ toYaml .Values.customLabels | indent 8}}
+{{- end }}
+      annotations:
+{{- if .Values.prismiac.annotations -}}
+        {{ toYaml .Values.prismiac.annotations | nindent 8 }}
+{{- end }}
+    spec:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: "kubernetes.io/hostname"
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: ssd
+              component: checkmarx-poller
+      containers:
+      - name: checkmarx-poller
+        image: {{ template "checkmarx.image" . }}
+        volumeMounts:
+        - name: checkmarx-poller-volume
+          mountPath: /app/config/checkmarx-poller.yaml
+          subPath: checkmarx-poller.yaml
+        - name: sbom
+          mountPath: /app/downloadedSbom
+        - name: ssd-public-keys
+          mountPath: /app/ssd-public-keys
+        - name: ssdsecret
+          readOnly: true
+          mountPath: /app/secrets/
+        - name: token
+          readOnly: true
+          mountPath: /app/secrets/checkmarx-poller-token/
+        {{- with .Values.prismiac.probes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.prismiac.resources }}
+      resources:
+      {{- toYaml . | nindent 10 }}
+      {{- end }}
+      {{- if .Values.prismiac.securityContext }}
+      securityContext:
+      {{ toYaml .Values.prismiac.securityContext | nindent 10 }}
+      {{- else }}
+      securityContext: {{ default "{}" }}
+      {{- end }}
+      volumes:
+        - name: checkmarx-poller-volume
+          configMap:
+            name: checkmarx-poller
+            items:
+              - key: checkmarx-poller.yaml
+                path: checkmarx-poller.yaml
+            defaultMode: 420
+        - name: ssd-public-keys
+          configMap:
+            name: ssd-public-keys
+            defaultMode: 420
+        - name: ssdsecret
+          secret:
+            secretName: ssdsecret
+            items:
+              - key: AESEncryptionKey
+                path: ssdsecret/AESEncryptionKey
+            defaultMode: 420  
+        - name: token
+          secret:
+            secretName: checkmarx-poller-token
+            defaultMode: 420
+        - name: sbom
+          emptyDir: {}
+      {{- if .Values.imagePullSecret }}
+      imagePullSecrets:
+      - name: {{ .Values.imagePullSecret }}
+      {{- end }}
+      restartPolicy: Always
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

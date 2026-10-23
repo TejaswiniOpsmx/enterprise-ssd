@@ -1,0 +1,32 @@
+#################This file is used to Install SSD with Random Password##########################
+#####################################################
+#k8sServiceType: LoadBalancer
+####################################################
+# Global variables can be accessed across all the charts including sub-charts
+global:
+  # If cert-manager is installed, TLS secrets will created automatically, as an 'Issuer' will be created
+  certManager:  # set to true if cert-manager is installed
+    installed: true
+  createIngress: true
+
+  ssdUI: # URL used to access the application
+    # Change to http if global.certManager.installed is false
+    protocol: https
+    ## Update the host value with proper dns entry to access the SSD UI
+    host: SSDURL.REPLACE.THIS.WITH.YOURCOMPANY.COM
+
+kubedetector:
+  namespaces:
+  ## Update the namespaces in the below section if not leave as empty.
+  ## If the namespace is provided the container Images of the respective namespace vunarabilities will be displayed.
+  - 
+###############################################################################
+#####User doesn't need to change the below flags let it be the default one######################
+ssdgate:
+  installDex: false   # Default will be false, Set to true if dex need to be installed
+  createGateDexSecret: true
+  auth_type: poclogin  # saml, dex-oidc and poclogin are other valid values
+  admin_groups:
+  - admin
+  saml:
+    saml_initiated_login: false

@@ -1,0 +1,9 @@
+{
+    "organisationName": "{{ .Values.organisationname }}",
+    "organisationRoles": [
+        {
+            "group": "{{ .Values.admingroups }}",
+            "permission": "admin"
+        }
+    ]
+}

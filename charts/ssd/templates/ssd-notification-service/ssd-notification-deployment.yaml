@@ -1,0 +1,125 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ssd-notification
+  labels:
+    app: ssd
+    component: ssd-notification
+{{ include "ssd.standard-labels" . | indent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app: ssd
+      component: ssd-notification
+  template:
+    metadata:
+      labels:
+        app: ssd
+        component: ssd-notification
+{{ include "ssd.standard-labels" . | indent 8 }}
+      annotations:
+{{- if .Values.ssdnotificationservice.annotations -}}
+        {{ toYaml .Values.ssdnotificationservice.annotations | nindent 8 }}
+{{- end }}
+    spec:
+      containers:
+        - name: ssd-notification
+          image: {{ template "ssdnotificationservice.image" . }}
+          env:
+            - name: RABBITMQ_HOST
+              value: rabbitmq-service
+            - name: RABBITMQ_PORT
+              value: '5672'
+            - name: RABBITMQ_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-secret
+                  key: username
+            - name: RABBITMQ_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-secret
+                  key: password
+            - name: WEBHOOK_SECRET_WEBHOOK_TESTER
+              valueFrom:
+                secretKeyRef:
+                  name: webhooksecret
+                  key: WebhookHmac
+                  optional: true
+          volumeMounts:
+            - name: ssd-public-keys
+              mountPath: /app/ssd-public-keys
+            - name: ssdsecret
+              readOnly: true
+              mountPath: /app/secrets/
+            - name: ssd-notification
+              mountPath: /app/config/ssd-notification.yaml
+              subPath: ssd-notification.yaml
+            - name: custom-certs
+              mountPath: /usr/local/share/ca-certificates
+            - name: token
+              readOnly: true
+              mountPath: /app/secrets/ssd-notification-token/
+      {{- with .Values.ssdnotificationservice.resources }}
+          resources:
+      {{- toYaml . | nindent 12 }}
+      {{- end }}
+          securityContext:
+      {{- if .Values.ssdnotificationservice.securityContext }}
+      {{ toYaml .Values.ssdnotificationservice.securityContext | nindent 12 }}
+      {{- end }}
+      {{- if .Values.imagePullSecret }}
+      imagePullSecrets:
+      - name: {{ .Values.imagePullSecret }}
+      {{- end }}
+      volumes:
+        - configMap:
+            defaultMode: 420
+            name: ssd-public-keys
+          name: ssd-public-keys
+        - name: token
+          secret:
+            defaultMode: 420
+            secretName: ssd-notification-token
+        - name: ssd-notification
+          configMap:
+            name: ssd-notification-config
+            items:
+              - key: ssd-notification.yaml
+                path: ssd-notification.yaml
+            defaultMode: 420
+        - name: ssd-proxy-certs
+          configMap:
+            defaultMode: 420
+            optional: true
+            name: ssd-proxy-certs
+        - name: custom-certs  # Optional: In case we are using any customer-specific custom CAs
+          configMap:
+            defaultMode: 420
+            items:
+            - key: ca.crt
+              path: ca.crt
+            optional: true
+            name: customer-custom-ca
+        - name: ssdsecret
+          secret:
+            secretName: ssdsecret
+            items:
+              - key: AESEncryptionKey
+                path: ssdsecret/AESEncryptionKey
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

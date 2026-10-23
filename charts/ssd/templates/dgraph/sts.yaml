@@ -1,27 +1,332 @@
+{{- if .Values.dgraph.HA.enabled }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
+  name: dgraph-zero
+spec:
+  serviceName: "dgraph-zero"
+  replicas: {{ .Values.dgraph.HA.replicas }}
+  selector:
+    matchLabels:
+      app: dgraph-zero
+  template:
+    metadata:
+      labels:
+        app: dgraph-zero
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - dgraph-zero
+              topologyKey: kubernetes.io/hostname
+      containers:
+      - name: zero
+        image: {{ template "dgraph.image" . }}
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5080
+          name: grpc-zero
+        - containerPort: 6080
+          name: http-zero
+        volumeMounts:
+        - name: datadir
+          mountPath: /dgraph
+        env:
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+        command:
+          - bash
+          - "-c"
+          - |
+            set -ex
+            [[ `hostname` =~ -([0-9]+)$ ]] || exit 1
+            ordinal=${BASH_REMATCH[1]}
+            idx=$(($ordinal + 1))
+            if [[ $ordinal -eq 0 ]]; then
+              exec dgraph zero --my=$(hostname -f):5080 --raft="idx=$idx" --replicas {{ .Values.dgraph.HA.replicas }}
+            else
+              exec dgraph zero --my=$(hostname -f):5080 --peer dgraph-zero-0.dgraph-zero.${POD_NAMESPACE}.svc.cluster.local:5080 --raft="idx=$idx" --replicas {{ .Values.dgraph.HA.replicas }}
+            fi
+      {{- with .Values.dgraph.probes }}
+      {{- toYaml . | nindent 8 }}
+      {{- else }}
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 6080
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 6
+          successThreshold: 1
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 6080
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 6
+          successThreshold: 1
+      {{- end }}
+      {{- with .Values.dgraph.resources }}
+      resources:
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
+      terminationGracePeriodSeconds: 60
+      volumes:
+      - name: datadir
+        persistentVolumeClaim:
+          claimName: datadir
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  updateStrategy:
+    type: RollingUpdate
+  volumeClaimTemplates:
+  - metadata:
+      name: datadir
+    spec:
+      {{- if .Values.storageClass }}
+      storageClassName: {{ .Values.storageClass }}
+      {{- end }}
+      accessModes:
+        - "ReadWriteOnce"
+      resources:
+        requests:
+          storage: {{ .Values.dgraph.storageMountSize }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: dgraph-alpha
+spec:
+  serviceName: "dgraph-alpha"
+  replicas: {{ .Values.dgraph.HA.replicas }}
+  selector:
+    matchLabels:
+      app: dgraph-alpha
+  template:
+    metadata:
+      labels:
+        app: dgraph-alpha
+    spec:
+      serviceAccountName: dgraph-sa
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - dgraph-alpha
+              topologyKey: kubernetes.io/hostname
+      containers:
+      - name: alpha
+        image: {{ template "dgraph.image" . }}
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 7080
+          name: grpc-alpha-int
+        - containerPort: 8080
+          name: http-alpha
+        - containerPort: 9080
+          name: grpc-alpha
+        volumeMounts:
+        - name: datadir
+          mountPath: /dgraph
+        env:
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          #- name: AWS_DEFAULT_REGION
+          #  value: us-east-1
+          #- name: AWS_ACCESS_KEY_ID
+          #  valueFrom:
+          #    secretKeyRef:
+          #      key: accesskey
+          #      name: aws-s3-creds
+          #- name: AWS_SECRET_ACCESS_KEY
+          #  valueFrom:
+          #    secretKeyRef:
+          #      key: secretkey
+          #      name: aws-s3-creds
+          - name: ENABLE_IMPORT
+            value: "{{ .Values.dgraph.HA.migrateolddata }}"
+        command:
+          - bash
+          - "-c"
+          - |
+            set -ex
+            sleep 30
+            if [ "${ENABLE_IMPORT}" == "true" ]; then
+
+              export DGRAPH_LEADER=$(curl -s http://dgraph-zero-public.${POD_NAMESPACE}.svc.cluster.local:6080/state | jq -r '.zeros[] | select(.leader == true) | .addr')
+              curl -s http://dgraph-zero-public.${POD_NAMESPACE}.svc.cluster.local:6080/state | jq -r '.zeros[] | select(.leader == true) | .addr'
+              dgraph bulk -f {{ .Values.dgraph.HA.s3bucketurl }}/g01.rdf.gz -g {{ .Values.dgraph.HA.s3bucketurl }}/g01.gql_schema.gz --format=rdf  --zero=${DGRAPH_LEADER}
+              cp -r out/0/p .
+            else
+              echo "Skipping dgraph data import due to ENABLE_IMPORT variable set to \"false\""
+            fi
+            dgraph alpha --my=$(hostname -f):7080 --zero dgraph-zero-0.dgraph-zero.${POD_NAMESPACE}.svc.cluster.local:5080,dgraph-zero-1.dgraph-zero.${POD_NAMESPACE}.svc.cluster.local:5080,dgraph-zero-2.dgraph-zero.${POD_NAMESPACE}.svc.cluster.local:5080 --security whitelist=0.0.0.0/0,::/0
+      {{- with .Values.dgraph.probes }}
+      {{- toYaml . | nindent 8 }}
+      {{- else }}
+        livenessProbe:
+          httpGet:
+            path: /health?live=1
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 6
+          successThreshold: 1
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 6
+          successThreshold: 1
+      {{- end }}
+      {{- with .Values.dgraph.resources }}
+      resources:
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
+      terminationGracePeriodSeconds: 600
+      volumes:
+      - name: datadir
+        persistentVolumeClaim:
+          claimName: datadir
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  updateStrategy:
+    type: RollingUpdate
+  volumeClaimTemplates:
+  - metadata:
+      name: datadir
+    spec:
+      {{- if .Values.storageClass }}
+      storageClassName: {{ .Values.storageClass }}
+      {{- end }}
+      accessModes:
+        - "ReadWriteOnce"
+      resources:
+        requests:
+          storage: {{ .Values.dgraph.storageMountSize }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dgraph-ratel
+  labels:
+    app: dgraph-ratel
+spec:
+  selector:
+    matchLabels:
+      app: dgraph-ratel
+  template:
+    metadata:
+      labels:
+        app: dgraph-ratel
+    spec:
+      containers:
+      - name: ratel
+        image: {{ template "ratel.image" . }}
+        ports:
+        - containerPort: 8000
+      {{- with .Values.ratel.resources }}
+      resources:
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- else }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: ssd
+    component: dgraph
+{{ include "ssd.standard-labels" . | indent 4 }}
   name: dgraph
 spec:
   serviceName: "dgraph"
   replicas: 1
   selector:
       matchLabels:
-        app: dgraph
+        app: ssd
+        component: dgraph
   template:
     metadata:
       labels:
-        app: dgraph
+        app: ssd
+        component: dgraph
+{{- if .Values.customLabels }}
+{{ toYaml .Values.customLabels | indent 8}}
+{{- end }}
+      annotations:
+{{- if .Values.dgraph.annotations -}}
+        {{ toYaml .Values.dgraph.annotations | nindent 8 }}
+{{- end }}
     spec:
       containers:
       - name: ratel
-        image: dgraph/ratel:latest
+        image: {{ template "ratel.image" . }}
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8000
           name: http-ratel
       - name: zero
-        image: dgraph/dgraph:latest
+        image: {{ template "dgraph.image" . }}
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 5080
@@ -38,7 +343,7 @@ spec:
             set -ex
             dgraph zero --my=$(hostname -f):5080
       - name: alpha
-        image: dgraph/dgraph:latest
+        image: {{ template "dgraph.image" . }}
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8080
@@ -48,7 +353,40 @@ spec:
         volumeMounts:
         - name: datadir
           mountPath: /dgraph
+      {{- with .Values.dgraph.probes }}
+      {{- toYaml . | nindent 8 }}
+      {{- else }}
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /health
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /health
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        startupProbe:
+          failureThreshold: 240
+          periodSeconds: 10
+          successThreshold: 1
+          tcpSocket:
+            port: 7080
+          timeoutSeconds: 1
+      {{- end }}
         env:
+          - name: ENABLE_IMPORT
+            value: "{{ .Values.dgraph.migrateexistingdata }}"
           - name: POD_NAMESPACE
             valueFrom:
               fieldRef:
@@ -58,22 +396,53 @@ spec:
           - "-c"
           - |
             set -ex
-            dgraph alpha --my=$(hostname -f):7080 --zero dgraph-0.dgraph.${POD_NAMESPACE}.svc.cluster.local:5080
+            sleep 10
+            if [ "${ENABLE_IMPORT}" == "true" ]; then
+              dgraph bulk -f {{ .Values.dgraph.datapath }}/g01.rdf.gz -g {{ .Values.dgraph.datapath }}/g01.gql_schema.gz --format=rdf --zero=localhost:5080
+              cp -r out/0/p .
+            else
+              echo "Skipping dgraph data import due to ENABLE_IMPORT variable set to \"false\""
+            fi
+            dgraph alpha --my=$(hostname -f):7080 --zero dgraph-0.dgraph.${POD_NAMESPACE}.svc.cluster.local:5080 --security "whitelist=0.0.0.0/0"
       terminationGracePeriodSeconds: 60
       volumes:
       - name: datadir
         persistentVolumeClaim:
           claimName: datadir
-  updateStrategy:
-    type: RollingUpdate
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  {{- if .Values.noPvc }}
+      volumes:
+      - name: datadir
+        emptyDir: {}
+  {{- else }}
   volumeClaimTemplates:
   - metadata:
       name: datadir
       annotations:
         volume.alpha.kubernetes.io/storage-class: anything
     spec:
+      {{- if .Values.storageClass }}
+      storageClassName: {{ .Values.storageClass }}
+      {{- end }}
       accessModes:
         - "ReadWriteOnce"
       resources:
         requests:
-          storage: 5Gi
+          storage: {{ .Values.dgraph.storageMountSize }}
+  {{- end }}
+{{- end }}

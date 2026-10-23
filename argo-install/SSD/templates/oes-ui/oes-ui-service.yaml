@@ -1,0 +1,24 @@
+---
+# Source: SSD/templates/oes-ui/oes-ui-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: oes
+    component: ui
+    heritage: "Helm"
+    release: "ssd"
+    chart: "SSD-4.0.9"
+  name: oes-ui
+spec:
+  type: ClusterIP
+  ports:
+  - name: "https"
+    port: 443
+    targetPort: 8080
+  - name: "http"
+    port: 8080
+    targetPort: 8080
+  selector:
+    app: oes
+    component: ui

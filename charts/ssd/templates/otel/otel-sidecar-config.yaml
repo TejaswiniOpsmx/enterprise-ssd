@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-sidecar-config
+  labels:
+    app: ssd
+{{ include "ssd.standard-labels" . | indent 4 }}
+    component: otel-sidecar
+data:
+{{ (tpl (.Files.Glob "config/otel/otel-sidecar-config.yaml").AsConfig . ) | indent 2 }}

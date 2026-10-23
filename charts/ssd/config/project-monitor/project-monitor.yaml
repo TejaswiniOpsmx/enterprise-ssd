@@ -1,0 +1,17 @@
+# HTTP Server Configuration
+httpListenPort: 9090
+# Logging Configuration
+logLevel: info
+# Path Configurations
+aesEncryptionKeyPath: /app/secrets/ssdsecret/AESEncryptionKey
+internalTokenPath: /app/secrets/project-monitor-token/token
+ssdPublicKeysPath: /app/ssd-public-keys
+# GraphQL Configuration
+{{- if .Values.dgraph.HA.enabled }}
+graphQLAddr: http://dgraph-alpha-public:8080
+{{- else }}
+graphQLAddr: http://dgraph-public:8080
+{{- end }}
+# Scan Configurations
+pollIntervalSeconds: 30
+prismIacUrl: http://prism-iac:8400

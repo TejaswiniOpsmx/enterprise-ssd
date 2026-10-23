@@ -1,0 +1,19 @@
+httpListenPort: 9091
+logLevel: {{ .Values.ssdnotificationservice.logLevel }}
+ssdPublicKeysPath: /app/ssd-public-keys
+graphQLAddr: http://dgraph-public:8080/graphql
+internalTokenPath: /app/secrets/ssd-notification-token/token
+encryptionKeyPath: /app/secrets/ssdsecret/AESEncryptionKey
+rabbitMQEnabled: true
+webhookMaxAttempts: 5
+webhookDLQMaxAttempts: 50
+webhookDLQMaxAge: 24h
+webhookDLQRetryInterval: 5m
+webhookClients:
+  - id: webhook-tester
+    url: "receiver-url"
+    secret: "${WEBHOOK_SECRET_WEBHOOK_TESTER}"
+    queue: ssd.webhook.tester
+    routingKey: webhook.tester
+    eventTypes: ["scan_activity", "user_activity", "scan_now_activity"]
+    eventNames: ["artifact_analysis", "project_analysis_started", "project_completed", "project_failed", "project_repository_error"]

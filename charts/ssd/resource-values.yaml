@@ -1,0 +1,219 @@
+#######################################################################################
+########### Below YAML file can be used along with Minimal Values file ###############
+### helm install <RELEASENAME> <OPSMXSSDCHART> -f <minimal-values.yaml> -f <resource-values.yaml> --timeout=600s -n <namespace>
+########### Update the Appropriate Request and Limit Values and replicacount ##########
+########### Attached the reference block for each section of resources ################
+#######################################################################################
+ssdgate:
+  resources: {}
+  #  requests:
+  #    memory: 500Mi
+  #    cpu: 500m
+  #  limits:
+  #    memory: 1500Mi
+  #    cpu: 1500m
+
+########################################################################
+db:
+  resources: {}
+  #  requests:
+  #    memory: 500Mi
+  #    cpu: 500m
+  #  limits:
+  #    memory: 1500Mi
+  #    cpu: 1500m
+  readinessProbe:
+    failureThreshold: 3
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    successThreshold: 1
+    tcpSocket:
+      port: 5432
+    timeoutSeconds: 1
+
+########################################################################
+toolchain:
+  replicaCount: 3
+  resources: {}
+  #  requests:
+  #    memory: 500Mi
+  #    cpu: 500m
+  #  limits:
+  #    memory: 1500Mi
+  #    cpu: 1500m
+########################################################################
+supplychainpreprocessor:
+  replicaCount: 1
+  resources: {}
+  #  requests:
+  #    memory: 500Mi
+  #    cpu: 500m
+  #  limits:
+  #    memory: 1500Mi
+  #    cpu: 1500m
+#########################################################################
+ssdopa:
+  replicaCount: 2
+  resources: {}
+  #  requests:
+  #    memory: 500Mi
+  #    cpu: 500m
+  #  limits:
+  #    memory: 1500Mi
+  #    cpu: 1500m
+########################################################################
+supplychainapi:
+  replicaCount: 1
+  resources: {}
+  #  requests:
+  #    memory: 500Mi
+  #    cpu: 500m
+  #  limits:
+  #    memory: 1500Mi
+  #    cpu: 1500m
+########################################################################
+tokenmachine:
+  resources: {}
+  #  requests:
+  #    memory: 500Mi
+  #    cpu: 500m
+  #  limits:
+  #    memory: 1500Mi
+  #    cpu: 1500m
+########################################################################
+rabbitmq:
+  resources: {}
+  #  requests:
+  #    memory: 500Mi
+  #    cpu: 500m
+  #  limits:
+  #    memory: 1500Mi
+  #    cpu: 1500m
+#########################################################################
+ui:
+  resources: {}
+  #  requests:
+  #    memory: 500Mi
+  #    cpu: 500m
+  #  limits:
+  #    memory: 1500Mi
+  #    cpu: 1500m
+########################################################################
+mobsf:
+  replicaCount: 1
+  resources: {}
+  #  requests:
+  #    memory: 500Mi
+  #    cpu: 500m
+  #  limits:
+  #    memory: 1500Mi
+  #    cpu: 1500m
+#######################################################################
+zap:
+  replicaCount: 1
+  resources: {}
+  #  requests:
+  #    memory: 500Mi
+  #    cpu: 500m
+  #  limits:
+  #    memory: 1500Mi
+  #    cpu: 1500m
+######################################################################
+ssdauditservice:
+  replicaCount: 1
+  resources: {}
+  #  requests:
+  #    memory: 500Mi
+  #    cpu: 500m
+  #  limits:
+  #    memory: 1500Mi
+  #    cpu: 1500m
+#######################################################################
+redis:
+  master:
+    resources: {}
+  #  requests:
+  #    memory: 16Gi
+  #    cpu: 4
+  #  limits:
+  #    memory: 24Gi
+  #    cpu: 8
+  #    ephemeral-storage: 20Gi
+#######################################################################
+dlvs:
+  resources: {}
+  #  requests:
+  #    memory: 500Mi
+  #    cpu: 500m
+  #  limits:
+  #    memory: 1500Mi
+  #    cpu: 1500m
+#######################################################################
+temporal:
+  server:
+    replicaCount: 1
+    resources: {}
+  #    requests:
+  #      memory: 500Mi
+  #      cpu: 500m
+  #    limits:
+  #      memory: 1500Mi
+  #      cpu: 1500m
+
+    frontend:
+      podDisruptionBudget: {}
+      resources: {}
+  #    requests:
+  #      memory: 500Mi
+  #      cpu: 500m
+  #    limits:
+  #      memory: 1500Mi
+  #      cpu: 1500m
+    history:
+      podDisruptionBudget: {}
+      resources: {}
+  #    requests:
+  #      memory: 500Mi
+  #      cpu: 500m
+  #    limits:
+  #      memory: 1500Mi
+  #      cpu: 1500m
+    worker:
+      podDisruptionBudget: {}
+      resources: {}
+  #    requests:
+  #      memory: 500Mi
+  #      cpu: 500m
+  #    limits:
+  #      memory: 1500Mi
+  #      cpu: 1500m
+    matching:
+      podDisruptionBudget: {}
+      resources: {}
+  #    requests:
+  #      memory: 500Mi
+  #      cpu: 500m
+  #    limits:
+  #      memory: 1500Mi
+  #      cpu: 1500m
+
+
+  web:
+    replicaCount: 1
+    resources: {}
+  #    requests:
+  #      memory: 500Mi
+  #      cpu: 500m
+  #    limits:
+  #      memory: 1500Mi
+  #      cpu: 1500m
+
+  admintools:
+    podDisruptionBudget: {}
+    resources: {}
+  #    requests:
+  #      memory: 500Mi
+  #      cpu: 500m
+  #    limits:
+  #      memory: 1500Mi
+  #      cpu: 1500m

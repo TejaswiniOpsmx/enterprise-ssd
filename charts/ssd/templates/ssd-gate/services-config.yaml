@@ -1,0 +1,12 @@
+apiVersion: v1
+data:
+  services-config.yaml: |
+    {{- tpl (.Files.Get "config/ssd-gate/services-config.yaml") . | nindent 4 }}
+kind: ConfigMap
+metadata:
+  name: services-config
+  labels:
+    app: ssd
+    component: gate
+{{ include "ssd.standard-labels" . | indent 4 }}
+

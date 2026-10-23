@@ -7,45 +7,15 @@
 */}}
 
 {{/*
-Extract spinnaker version in the format major.minor for sapor configuration
-*/}}
-{{- define "oes.spinnakerVersion" -}}
-{{- $parts := split "." .Values.spinnaker.halyard.spinnakerVersion -}}
-{{- printf "%s.%s" $parts._0 $parts._1 -}}
-{{- end -}}
-
-{{/*
-Create a default fully qualified app name.
-We truncate at 24 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
-*/}}
-{{- define "oes.fullname" -}}
-{{- $name := default .Chart.Name .Values.nameOverride -}}
-{{- printf "%s-%s" .Release.Name $name | trunc 24 | trimSuffix "-" -}}
-{{- end -}}
-
-{{/*
-Create a default fully qualified app name.
-We truncate at 24 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
-*/}}
-{{- define "spinnaker.fullname" -}}
-{{- $name := default "spinnaker" -}}
-{{- printf "%s-%s" .Release.Name $name | trunc 24 | trimSuffix "-" -}}
-{{- end -}}
-
-{{/*
 Common labels for metadata.
 */}}
-{{- define "oes.standard-labels" -}}
+{{- define "ssd.standard-labels" -}}
 heritage: {{ .Release.Service | quote }}
 release: {{ .Release.Name | quote }}
 chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
-{{- end -}}
-
-{{/*
-Common annotations for ISD.
-*/}}
-{{- define "isd.standard-annotations" -}}
-moniker.spinnaker.io/application: isd
+{{- if .Values.customLabels }}
+{{ toYaml .Values.customLabels }}
+{{- end }}
 {{- end -}}
 
 {{/*
@@ -59,133 +29,12 @@ Return the proper UI image name
 {{- end -}}
 
 {{/*
-Return the proper GATE image name
-*/}}
-{{- define "gate.image" -}}
-{{- $registryName := .Values.imageCredentials.registry -}}
-{{- $repositoryName := .Values.gate.image.repository -}}
-{{- $tag := .Values.gate.image.tag | toString -}}
-{{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
-{{- end -}}
-
-{{/*
-Return the proper datascience image name
-*/}}
-{{- define "datascience.image" -}}
-{{- $registryName := .Values.imageCredentials.registry -}}
-{{- $repositoryName := .Values.datascience.image.repository -}}
-{{- $tag := .Values.datascience.image.tag | toString -}}
-{{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
-{{- end -}}
-
-{{/*
-Return the proper audit service image name
-*/}}
-{{- define "auditservice.image" -}}
-{{- $registryName := .Values.imageCredentials.registry -}}
-{{- $repositoryName := .Values.audit.image.repository -}}
-{{- $tag := .Values.audit.image.tag | toString -}}
-{{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
-{{- end -}}
-
-{{/*
-Return the proper audit client image name
-*/}}
-{{- define "auditclient.image" -}}
-{{- $registryName := .Values.imageCredentials.registry -}}
-{{- $repositoryName := .Values.auditClient.image.repository -}}
-{{- $tag := .Values.auditClient.image.tag | toString -}}
-{{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
-{{- end -}}
-
-{{/*
-Return the proper SAPOR GATE image name
-*/}}
-{{- define "saporgate.image" -}}
-{{- $registryName := .Values.imageCredentials.registry -}}
-{{- $repositoryName := .Values.saporgate.image.repository -}}
-{{- $tag := .Values.saporgate.image.tag | toString -}}
-{{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
-{{- end -}}
-
-{{/*
-Return the proper SAPOR image name
-*/}}
-{{- define "sapor.image" -}}
-{{- $registryName := .Values.imageCredentials.registry -}}
-{{- $repositoryName := .Values.sapor.image.repository -}}
-{{- $tag := .Values.sapor.image.tag | toString -}}
-{{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
-{{- end -}}
-
-{{/*
-Return the proper platform image name
-*/}}
-{{- define "platform.image" -}}
-{{- $registryName := .Values.imageCredentials.registry -}}
-{{- $repositoryName := .Values.platform.image.repository -}}
-{{- $tag := .Values.platform.image.tag | toString -}}
-{{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
-{{- end -}}
-
-{{/*
-Return the proper dashboard image name
-*/}}
-{{- define "dashboard.image" -}}
-{{- $registryName := .Values.imageCredentials.registry -}}
-{{- $repositoryName := .Values.dashboard.image.repository -}}
-{{- $tag := .Values.dashboard.image.tag | toString -}}
-{{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
-{{- end -}}
-
-{{/*
-Return the proper sapor-db image name
+Return the proper SSD-DB image name
 */}}
 {{- define "db.image" -}}
 {{- $registryName := .Values.imageCredentials.registry -}}
 {{- $repositoryName := .Values.db.image.repository -}}
 {{- $tag := .Values.db.image.tag | toString -}}
-{{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
-{{- end -}}
-
-{{/*
-Return the proper visibility image name
-*/}}
-{{- define "visibility.image" -}}
-{{- $registryName := .Values.imageCredentials.registry -}}
-{{- $repositoryName := .Values.visibility.image.repository -}}
-{{- $tag := .Values.visibility.image.tag | toString -}}
-{{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
-{{- end -}}
-
-
-{{/*
-Return the proper Autopilot image name
-*/}}
-{{- define "autopilot.image" -}}
-{{- $registryName := .Values.imageCredentials.registry -}}
-{{- $repositoryName := .Values.autopilot.image.repository -}}
-{{- $tag := .Values.autopilot.image.tag | toString -}}
-{{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
-{{- end -}}
-
-{{/*
-Return the proper Opa image name
-*/}}
-{{- define "opa.image" -}}
-{{- $registryName := .Values.imageCredentials.registry -}}
-{{- $repositoryName := .Values.opa.image.repository -}}
-{{- $tag := .Values.opa.image.tag | toString -}}
-{{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
-{{- end -}}
-
-{{/*
-Return the proper Create Controller Image
-*/}}
-{{- define "createcontroller.image" -}}
-{{- $registryName := .Values.imageCredentials.registry -}}
-{{- $repositoryName := .Values.createcontroller.image.repository -}}
-{{- $tag := .Values.createcontroller.image.tag | toString -}}
 {{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
 {{- end -}}
 
@@ -229,6 +78,77 @@ Return the proper Supplychain-api Image
  {{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
  {{- end -}}
 
+{{/*
+ Return the proper ssd-gate Image
+*/}}
+ {{- define "ssdgate.image" -}}
+ {{- $registryName := .Values.imageCredentials.registry -}}
+ {{- $repositoryName := .Values.ssdgate.image.repository -}}
+ {{- $tag := .Values.ssdgate.image.tag | toString -}}
+ {{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
+ {{- end -}}
+
+{{/*
+ Return the proper dgraph Image
+*/}}
+ {{- define "dgraph.image" -}}
+ {{- $registryName := .Values.imageCredentials.registry -}}
+ {{- $repositoryName := .Values.dgraph.image.repository -}}
+ {{- $tag := .Values.dgraph.image.tag | toString -}}
+ {{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
+ {{- end -}}
+
+{{/*
+ Return the proper ratel Image
+*/}}
+ {{- define "ratel.image" -}}
+ {{- $registryName := .Values.imageCredentials.registry -}}
+ {{- $repositoryName := .Values.ratel.image.repository -}}
+ {{- $tag := .Values.ratel.image.tag | toString -}}
+ {{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
+ {{- end -}}
+
+
+{{/*
+ Return the proper Token-Machine Image
+*/}}
+ {{- define "tokenmachine.image" -}}
+ {{- $registryName := .Values.imageCredentials.registry -}}
+ {{- $repositoryName := .Values.tokenmachine.image.repository -}}
+ {{- $tag := .Values.tokenmachine.image.tag | toString -}}
+ {{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
+ {{- end -}}
+
+{{/*
+ Return the proper Curl Image
+*/}}
+ {{- define "curl.image" -}}
+ {{- $registryName := .Values.imageCredentials.registry -}}
+ {{- $repositoryName := .Values.curl.image.repository -}}
+ {{- $tag := .Values.curl.image.tag | toString -}}
+ {{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
+ {{- end -}}
+
+{{/*
+Return the proper Mobsf image name
+*/}}
+{{- define "mobsf.image" -}}
+{{- $registryName := .Values.imageCredentials.registry -}}
+{{- $repositoryName := .Values.mobsf.image.repository -}}
+{{- $tag := .Values.mobsf.image.tag | toString -}}
+{{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
+{{- end -}}
+
+{{/*
+Return the proper ZAP image name
+*/}}
+{{- define "zap.image" -}}
+{{- $registryName := .Values.imageCredentials.registry -}}
+{{- $repositoryName := .Values.zap.image.repository -}}
+{{- $tag := .Values.zap.image.tag | toString -}}
+{{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
+{{- end -}}
+
 {{/* vim: set filetype=mustache: */}}
 {{/*
 Renders a value that contains template.
@@ -247,7 +167,7 @@ Usage:
 {{/*
 Redis base URL for Spinnaker
 */}}
-{{- define "spinnaker.redisBaseURL" -}}
+{{- define "ssd.redisBaseURL" -}}
 {{- if .Values.installRedis }}
 {{- printf "redis://:%s@%s-redis-master:6379" .Values.redis.password .Release.Name -}}
 {{- else if .Values.redis.external.password }}
@@ -256,3 +176,296 @@ Redis base URL for Spinnaker
 {{- printf "redis://%s:%s" .Values.redis.external.host (.Values.redis.external.port | toString) -}}
 {{- end }}
 {{- end }}
+
+
+{{/*
+Return the proper OTEL image name
+*/}}
+{{- define "otel.image" -}}
+{{- $registryName := .Values.imageCredentials.registry -}}
+{{- $repositoryName := .Values.otel.image.repository -}}
+{{- $tag := .Values.otel.image.tag | toString -}}
+{{- printf "%s:%s" $repositoryName $tag -}}
+{{- end -}}
+
+{{/*
+Return the proper Snyk Monitor image name
+*/}}
+{{- define "snykmonitor.image" -}}
+{{- $registryName := .Values.imageCredentials.registry -}}
+{{- $repositoryName := .Values.snykmonitor.image.repository -}}
+{{- $tag := .Values.snykmonitor.image.tag | toString -}}
+{{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
+{{- end -}}
+
+{{/*
+Adding the New container to all Services
+*/}}
+{{- define "otel.sidecar.container" }}
+- name: otel-sidecar
+  image: {{ template "otel.image" . }}
+  args:
+    - '--config=/etc/otel/otel-sidecar-config.yaml'
+  resources: {}
+  volumeMounts:
+    - name: otel-sidecar-volume
+      mountPath: /etc/otel
+    - name: logs
+      readOnly: true
+      mountPath: /app/logs
+  {{- if .Values.otel.securityContext }}
+  securityContext:
+  {{ toYaml .Values.otel.securityContext | nindent 12 }}
+  {{- else }}
+  securityContext: {{ default "{}" }}
+  {{- end }}
+  {{- with .Values.otel.resources }}
+  resources:
+  {{- toYaml . | nindent 12 }}
+  {{- end }}
+{{- end }}
+
+{{/*
+Return the proper Source Scan Image
+*/}}
+{{- define "sourcescan.image" -}}
+{{- $registryName := .Values.imageCredentials.registry -}}
+{{- $repositoryName := .Values.sourcescan.image.repository -}}
+{{- $tag := .Values.sourcescan.image.tag | toString -}}
+{{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
+{{- end -}}
+
+{{/*
+ Return the proper k8s-decoder Image
+*/}}
+ {{- define "k8sdecoder.image" -}}
+ {{- $registryName := .Values.imageCredentials.registry -}}
+ {{- $repositoryName := .Values.k8sdecoder.image.repository -}}
+ {{- $tag := .Values.k8sdecoder.image.tag | toString -}}
+ {{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
+ {{- end -}}
+
+{{/*
+Return the proper kubescape-service image name
+*/}}
+{{- define "kubescape.image" -}}
+{{- $registryName := .Values.imageCredentials.registry -}}
+{{- $repositoryName := .Values.kubescape.image.repository -}}
+{{- $tag := .Values.kubescape.image.tag | toString -}}
+{{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
+{{- end -}}
+
+{{/*
+Return the proper opsmx-custom-binaries image name
+*/}}
+{{- define "opsmxcustombinaries.image" -}}
+{{- $registryName := .Values.imageCredentials.registry -}}
+{{- $repositoryName := .Values.opsmxcustombinaries.image.repository -}}
+{{- $tag := .Values.opsmxcustombinaries.image.tag | toString -}}
+{{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
+{{- end -}}
+
+{{/*
+Return the proper kubernetes-detector image name
+*/}}
+{{- define "kubedetector.image" -}}
+{{- $registryName := .Values.imageCredentials.registry -}}
+{{- $repositoryName := .Values.kubedetector.image.repository -}}
+{{- $tag := .Values.kubedetector.image.tag | toString -}}
+{{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
+{{- end -}}
+
+{{/*
+Return the proper Project Monitor Image
+*/}}
+{{- define "projectmonitor.image" -}}
+{{- $registryName := .Values.imageCredentials.registry -}}
+{{- $repositoryName := .Values.projectmonitor.image.repository -}}
+{{- $tag := .Values.projectmonitor.image.tag | toString -}}
+{{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
+{{- end -}}
+
+{{/*
+Return the proper SSD Reschduler Image
+*/}}
+{{- define "ssdrescheduler.image" -}}
+{{- $registryName := .Values.imageCredentials.registry -}}
+{{- $repositoryName := .Values.ssdrescheduler.image.repository -}}
+{{- $tag := .Values.ssdrescheduler.image.tag | toString -}}
+{{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
+{{- end -}}
+
+{{/*
+Return the proper Artifact Scan Image
+*/}}
+{{- define "artifactscan.image" -}}
+{{- $registryName := .Values.imageCredentials.registry -}}
+{{- $repositoryName := .Values.artifactscan.image.repository -}}
+{{- $tag := .Values.artifactscan.image.tag | toString -}}
+{{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
+{{- end -}}
+
+
+{{/*
+Return the proper S3 details
+*/}}
+{{- define "s3.bucketname" -}}
+{{- $fullurl := .Values.s3bucketurl }}
+{{- $value := regexSplit "\\.s3\\." $fullurl -1 }}
+{{- $protocol := index $value 0 }}
+{{- $https := regexSplit "//" $protocol -1 }}
+{{- $bucketname := index $https 1 }}
+{{- printf "%s" $bucketname -}}
+{{- end }}
+
+{{- define "s3.protocolcheck" -}}
+{{- $fullurl := .Values.s3bucketurl }}
+{{- $parts := regexSplit "://" $fullurl -1 }}
+{{- $scheme := index $parts 0 }}
+{{- if eq $scheme "https" -}}
+"true"
+{{- else -}}
+"false"
+{{- end }}
+{{- end }}
+
+
+{{/*
+Return the proper InitContainer Images
+*/}}
+{{- define "initcontainer.images" -}}
+{{- $registryName := .Values.imageCredentials.registry -}}
+{{- $repositoryName := .Values.initContainer.image.repository -}}
+{{- $tag := .Values.initContainer.image.tag | toString -}}
+{{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
+{{- end -}}
+
+
+{{/*
+Return the proper Rabbitmq Images
+*/}}
+{{- define "rabbitmq.image" -}}
+{{- $registryName := .Values.imageCredentials.registry -}}
+{{- $repositoryName := .Values.rabbitmq.image.repository -}}
+{{- $tag := .Values.rabbitmq.image.tag | toString -}}
+{{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
+{{- end -}}
+
+{{/*
+Return the proper Rabbitmq Images
+*/}}
+{{- define "ssdauditservice.image" -}}
+{{- $registryName := .Values.imageCredentials.registry -}}
+{{- $repositoryName := .Values.ssdauditservice.image.repository -}}
+{{- $tag := .Values.ssdauditservice.image.tag | toString -}}
+{{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
+{{- end -}}
+
+{{/*
+Return the proper License Generator Images
+*/}}
+{{- define "licensegenerator.image" -}}
+{{- $registryName := .Values.imageCredentials.registry -}}
+{{- $repositoryName := .Values.licensegenerator.image.repository -}}
+{{- $tag := .Values.licensegenerator.image.tag | toString -}}
+{{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
+{{- end -}}
+
+{{/*
+Return the proper DLVS Images
+*/}}
+{{- define "dlvs.image" -}}
+{{- $registryName := .Values.imageCredentials.registry -}}
+{{- $repositoryName := .Values.dlvs.image.repository -}}
+{{- $tag := .Values.dlvs.image.tag | toString -}}
+{{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
+{{- end -}}
+
+{{/*
+Return the proper Aishield Images
+*/}}
+{{- define "aishield.image" -}}
+{{- $registryName := .Values.imageCredentials.registry -}}
+{{- $repositoryName := .Values.aishield.image.repository -}}
+{{- $tag := .Values.aishield.image.tag | toString -}}
+{{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
+{{- end -}}
+
+{{/*
+Return the proper SSD Notification Service Image
+*/}}
+{{- define "ssdnotificationservice.image" -}}
+{{- $registryName := .Values.imageCredentials.registry -}}
+{{- $repositoryName := .Values.ssdnotificationservice.image.repository -}}
+{{- $tag := .Values.ssdnotificationservice.image.tag | toString -}}
+{{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
+{{- end -}}
+
+{{/*
+Return the proper AI Remediation Image
+*/}}
+{{- define "airemediation.image" -}}
+{{- $registryName := .Values.imageCredentials.registry -}}
+{{- $repositoryName := .Values.airemediation.image.repository -}}
+{{- $tag := .Values.airemediation.image.tag | toString -}}
+{{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
+{{- end -}}
+
+{{/*
+Return the proper PRISM IAC Image
+*/}}
+{{- define "prismiac.image" -}}
+{{- $registryName := .Values.imageCredentials.registry -}}
+{{- $repositoryName := .Values.prismiac.image.repository -}}
+{{- $tag := .Values.prismiac.image.tag | toString -}}
+{{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
+{{- end -}}
+
+{{/*
+Return the proper PENTESTGPT WRAPPER Image
+*/}}
+{{- define "pentestgpt.image" -}}
+{{- $registryName := .Values.imageCredentials.registry -}}
+{{- $repositoryName := .Values.pentestgpt.image.repository -}}
+{{- $tag := .Values.pentestgpt.image.tag | toString -}}
+{{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
+{{- end -}}
+
+{{/*
+Return the proper CHECKMARX WRAPPER Image
+*/}}
+{{- define "checkmarx.image" -}}
+{{- $registryName := .Values.imageCredentials.registry -}}
+{{- $repositoryName := .Values.checkmarx.image.repository -}}
+{{- $tag := .Values.checkmarx.image.tag | toString -}}
+{{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
+{{- end -}}
+
+{{/*
+Return the proper AIBOM WRAPPER Image
+*/}}
+{{- define "aibom.image" -}}
+{{- $registryName := .Values.imageCredentials.registry -}}
+{{- $repositoryName := .Values.aibom.image.repository -}}
+{{- $tag := .Values.aibom.image.tag | toString -}}
+{{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
+{{- end -}}
+
+{{/*
+Return the proper OPSMX ASSISTANT Image
+*/}}
+{{- define "opsmxassistant.image" -}}
+{{- $registryName := .Values.imageCredentials.registry -}}
+{{- $repositoryName := .Values.opsmxassistant.image.repository -}}
+{{- $tag := .Values.opsmxassistant.image.tag | toString -}}
+{{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
+{{- end -}}
+
+Return the proper MCP SERVER Image
+*/}}
+{{- define "mcpserver.image" -}}
+{{- $registryName := .Values.imageCredentials.registry -}}
+{{- $repositoryName := .Values.mcpserver.image.repository -}}
+{{- $tag := .Values.mcpserver.image.tag | toString -}}
+{{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
+{{- end -}}

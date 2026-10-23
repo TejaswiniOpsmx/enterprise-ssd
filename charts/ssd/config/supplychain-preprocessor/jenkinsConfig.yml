@@ -1,0 +1,25 @@
+rabbitmq:
+  queue: jenkins-ssd
+  exchange: jenkins.events
+  bindingKey: jenkins-ssd
+  prefetchCount: 50
+
+graphql:
+  {{- if .Values.dgraph.HA.enabled }}
+  host: http://dgraph-alpha-public
+  {{- else }}
+  host: http://dgraph-public
+  {{- end }}
+  port: 8080
+
+ssdopasvc:
+  host: http://ssd-opa
+  port: 8200
+
+supplychainapi:
+  host: http://supplychain-api
+  port: 8099
+
+ssdtoolchainsvc:
+  host: http://tool-chain
+  port: 8100

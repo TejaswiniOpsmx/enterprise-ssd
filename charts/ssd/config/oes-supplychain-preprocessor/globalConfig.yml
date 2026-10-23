@@ -1,5 +1,0 @@
-plugins:
-  - jenkins
-  - spinnaker
-  - argocd
-loglevel: info

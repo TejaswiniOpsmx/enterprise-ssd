@@ -1,0 +1,199 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: ssd
+    component: zap
+{{ include "ssd.standard-labels" . | indent 4 }}
+  name: zap
+spec:
+  replicas: {{ .Values.zap.replicaCount }}
+  selector:
+    matchLabels:
+      app: ssd
+      component: zap
+  template:
+    metadata:
+      annotations:
+        checksum/configmap: {{ include (print $.Template.BasePath "/zap/zap-api-auth-script.yaml") . | sha256sum }}
+        checksum/configmap: {{ include (print $.Template.BasePath "/zap/zap-api-session-script.yaml") . | sha256sum }}
+        checksum/configmap: {{ include (print $.Template.BasePath "/zap/zap-confimap.yaml") . | sha256sum }}
+{{- if .Values.zap.annotations -}}
+        {{ toYaml .Values.zap.annotations | nindent 8 }}
+{{- end }}
+      labels:
+        app: ssd
+        component: zap
+{{- if .Values.customLabels }}
+{{ toYaml .Values.customLabels | indent 8}}
+{{- end }}
+    spec:
+      containers:
+      - image: {{ template "zap.image" . }}
+        name: zap
+        command:
+          - /zap/zap.sh
+          - '-daemon'
+          - '-host'
+          - 0.0.0.0
+          - '-port'
+          - '8080'
+          - -addonupdate
+          - -addoninstall
+          - openapi
+          - '-addoninstall'
+          - oast
+          - '-addoninstall'
+          - ascanrulesBeta
+          - '-addoninstall'
+          - ascanrules
+          - '-config'
+          - api.disablekey=true
+          - '-config'
+          - api.addrs.addr.name=.*
+          - '-config'
+          - api.addrs.addr.regex=true
+          - '-config'
+          - network.localServers.aliases.alias.name=zap-service
+        env:
+        - name: ZAP_API_ADDRESSES
+          value: '*'
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        lifecycle:
+          postStart:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  {
+                  echo "Waiting for ZAP to become ready..."
+                  until curl -s http://localhost:8080/JSON/core/view/version/ > /dev/null; do
+                  sleep 2
+                  done
+                  for i in $(seq 1 30); do
+                    if curl -s http://localhost:8080/JSON/script/view/listTypes/ | grep -q httpsender; then
+                      echo "Attempt $i httpsender type is now available."
+                      break
+                    fi
+                    echo "Attempt $i httpsender not ready yet..."
+                    sleep 2
+                  done
+                  load_session_url='http://localhost:8080/JSON/script/action/load/?scriptName=Zap-Api-Session-Script.js&scriptType=session&scriptEngine=Graal.js&fileName=/tmp/Zap-Api-Session-Script.js&charset=UTF-8'
+                  load_api_url='http://localhost:8080/JSON/script/action/load/?scriptName=Zap-Api-Auth-Script.js&scriptType=authentication&scriptEngine=Graal.js&fileName=/tmp/Zap-Api-Auth-Script.js&charset=UTF-8'
+                  load_oast_config='http://localhost:8080/JSON/oast/action/setActiveScanService/?name=BOAST'
+                  retry() {
+                    local url=$1
+                    local tries=0
+                    while :; do
+                      out=$(curl -s "$url" || true)
+                      echo "$out" | grep -q '"Result":"OK"' && break
+                      tries=$((tries+1))
+                      [ $tries -ge 30 ] && { echo "ERROR giving up on $url"; exit 1; }
+                      sleep 2
+                    done
+                  }
+                  echo "Loading Api Session script..."
+                  retry "$load_session_url"
+                  echo "Loading Api Auth script..."
+                  retry "$load_api_url"
+                  echo "Loading OAST config..."
+                  retry "$load_oast_config"
+                  echo "Api Auth and Session script loaded ."
+                  }  >> /zap/poststart.log 2>&1
+        volumeMounts:
+        - name: auth-script
+          mountPath: /tmp/Form-Based-Auth.js
+          subPath: Form-Based-Auth.js
+        - mountPath: /tmp/Zap-Api-Session-Script.js
+          name: api-session-script
+          subPath: Zap-Api-Session-Script.js
+        - mountPath: /tmp/Zap-Api-Auth-Script.js
+          name: api-auth-script
+          subPath: Zap-Api-Auth-Script.js
+      {{- with .Values.zap.probes }}
+      {{- toYaml . | nindent 8 }}
+      {{- else }}
+        livenessProbe:
+          failureThreshold: 60
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          tcpSocket:
+            port: 8080
+          timeoutSeconds: 2
+        readinessProbe:
+          failureThreshold: 60
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          tcpSocket:
+            port: 8080
+          timeoutSeconds: 2
+      {{- end }}
+      {{- with .Values.zap.resources }}
+        resources:
+      {{- toYaml . | nindent 10 }}
+      {{- end }}
+        securityContext:
+      {{- if .Values.zap.securityContext }}
+      {{ toYaml .Values.zap.securityContext | nindent 10 }}
+      {{- else }}
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          runAsUser: 1000
+          runAsGroup: 1000
+          seccompProfile:
+            type: RuntimeDefault
+      {{- end }}
+      {{- if .Values.imagePullSecret}}
+      imagePullSecrets:
+      - name: {{ .Values.imagePullSecret}}
+      {{- end }}
+      {{- if .Values.global.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.global.nodeSelector | indent 8 }}
+      {{- end }}
+      {{- if .Values.global.affinity }}
+      affinity:
+{{ toYaml .Values.global.affinity | indent 8 }}
+      {{- end }}
+      {{- if .Values.global.tolerations }}
+      tolerations:
+{{ toYaml .Values.global.tolerations | indent 8 }}
+      {{- end }}
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: zap-auth-script
+        name: auth-script
+      - configMap:
+          defaultMode: 420
+          name: zap-api-session-script
+        name: api-session-script
+      - configMap:
+          defaultMode: 420
+          name: zap-api-auth-script
+        name: api-auth-script
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

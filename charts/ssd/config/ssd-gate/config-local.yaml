@@ -1,0 +1,15 @@
+ssd_baseurl: http://localhost:8080
+
+auth_type: {{ .Values.ssdgate.auth_type }}
+auth2_oidc:
+  client_id: ssd-gate
+  client_secret: "encrypted:gate-dex-client-secret:client-secret"
+  userinfo_url: "http://ssd-dex:5556/dex/userinfo"
+  endpoint:
+    auth_url:  "http://localhost:8080/dex/auth"
+    token_url: "http://ssd-dex:5556/dex/token"
+  entity_map:
+    user_name: email
+  scopes:
+    - openid
+    - offline_access

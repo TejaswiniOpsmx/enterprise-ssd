@@ -1,0 +1,30 @@
+httpListenPort: 8100
+{{- if .Values.dgraph.HA.enabled }}
+graphQLAddr: http://dgraph-alpha-public:8080/graphql
+{{- else }}
+graphQLAddr: http://dgraph-public:8080/graphql
+{{- end }}
+cloneRepoOnce: {{ .Values.toolchain.cloneRepoOnce }}
+logLevel: {{ .Values.toolchain.logLevel }}
+ossSvc: http://34.28.37.172:8070
+kbUrl: https://ssd.kb.opsmx.net
+ssdVuln: http://212.2.240.29:8900
+mobsfClentAddr: http://mobsf-service:8000
+otelAddr: localhost:4317
+otelInterval: {{ .Values.otel.interval }}
+sonarQubeCreated: {{ .Values.toolchain.fetchsonardata }}
+licenseGenSvc: http://ssd-license-generator:8080
+pentestGPTServiceURL: http://pentestgpt-wrapper.may-dev.svc.cluster.local:8080
+maxConcurrentArtifactWorkflowTaskExecutionSize: 0 # optional field; default is 0 which means maximum
+maxConcurrentSourceWorkflowTaskExecutionSize: 0 # optional field; default is 0 which means maximum
+aibomServiceAddr: "http://aibom-service:8082"
+aifpSvc: "http://ai-guardian-remediation:8588"
+aiEnabled: true
+scoutSuite:
+  maxWorkers: 10
+  maxRate: {{ .Values.toolchain.maxRate }}
+  scanTimeout: 7h # to defind the max timeout for a single cloud account scan
+  #skip:  # this can be left empty at most cases to allow scanning of all services
+  #  aws: ["ec2"]
+  #  azure: []
+  #  gcp: []

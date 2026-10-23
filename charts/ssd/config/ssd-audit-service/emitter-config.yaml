@@ -1,0 +1,13 @@
+# =============================================================================
+# REDIS CONFIGURATION (Shared by Consumer and Webhook)
+# =============================================================================
+REDIS_HOST: {{ .Release.Name }}-redis-master
+REDIS_PORT: "6379"
+REDIS_DB: "0"
+
+# =============================================================================
+# CONSUMER SERVICE CONFIGURATION
+# =============================================================================
+
+# Queue Configuration
+AUDIT_QUEUE_NAME: audit-events

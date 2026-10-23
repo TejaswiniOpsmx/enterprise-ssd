@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: token-machine
+  labels:
+    app: ssd
+    component: token-machine
+{{ include "ssd.standard-labels" . | indent 4 }}
+spec:
+  replicas: {{ .Values.tokenmachine.replicaCount }}
+  selector:
+    matchLabels:
+      app: ssd
+      component: token-machine
+  template:
+    metadata:
+      labels:
+        app: ssd
+        component: token-machine
+{{ include "ssd.standard-labels" . | indent 8 }}
+      annotations:
+        checksum/configmap: {{ include (print $.Template.BasePath "/token-machine/token-machine-cm.yaml") . | sha256sum }}
+{{- if .Values.tokenmachine.annotations -}}
+        {{ toYaml .Values.tokenmachine.annotations | nindent 8 }}
+{{- end }}
+    spec:
+      serviceAccountName: token-machine
+      containers:
+        - name: token-machine
+          image: {{ template "tokenmachine.image" . }}
+          ports:
+            - containerPort: 8050
+              protocol: TCP
+          env:
+          - name: KUBERNETES_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          volumeMounts:
+            - name: config-volume
+              mountPath: /opsmx/config/
+          {{- with .Values.tokenmachine.probes }}
+          {{- toYaml . | nindent 10 }}
+          {{- else }}
+          livenessProbe:
+            failureThreshold: 60
+            periodSeconds: 10
+            successThreshold: 1
+            tcpSocket:
+              port: 8050
+            timeoutSeconds: 2
+          readinessProbe:
+            failureThreshold: 60
+            periodSeconds: 10
+            successThreshold: 1
+            tcpSocket:
+              port: 8050
+            timeoutSeconds: 1
+          {{- end }}
+      {{- with .Values.tokenmachine.resources }}
+          resources:
+      {{- toYaml . | nindent 12 }}
+      {{- end }}
+          securityContext:
+      {{- if .Values.tokenmachine.securityContext }}
+      {{- toYaml .Values.tokenmachine.securityContext | nindent 12 }}
+      {{- else }}
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+      {{- end }}
+
+      {{- if .Values.imagePullSecret }}
+      imagePullSecrets:
+      - name: {{ .Values.imagePullSecret }}
+      {{- end }}
+      restartPolicy: Always
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: config-volume
+          configMap:
+            name: token-machine

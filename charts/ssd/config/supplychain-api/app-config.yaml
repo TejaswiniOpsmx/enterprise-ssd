@@ -1,0 +1,46 @@
+ssdIngress: {{.Values.global.ssdUI.protocol}}://{{.Values.global.ssdUI.host}}
+detectorImage: {{ template "kubedetector.image" . }}
+kubescapeImage: {{ template "kubescape.image" . }}
+ssdRescheduler: http://ssd-rescheduler:8010
+gotenberg: http://localhost:3000
+ssdIssuer: {{ .Values.supplychainapi.ssdIssuer }}
+#jwkPath: {{ .Values.supplychainapi.jwkPath }}
+namespace: {{ .Release.Namespace }}
+zapService: http://zap-service:8080
+ssdLicenseGenerator: http://ssd-license-generator:8080
+aiRemediation: http://ai-guardian-remediation:8588
+ssdVuln: http://212.2.240.29:8900
+aibomService: http://aibom-service:8082
+audit:
+  enabled: true
+tokenMachine:
+    host: http://token-machine
+    port: 8050
+opsMxSvc: {{.Values.global.ssdUI.protocol}}://{{.Values.global.ssdUI.host}}
+ssdOpa: http://ssd-opa:8200
+graphqlsvc:
+    {{- if .Values.dgraph.HA.enabled }}
+    host: http://dgraph-alpha-public
+    {{- else }}
+    host: http://dgraph-public
+    {{- end }}
+    port: 8080
+toolchain:
+    host: http://tool-chain
+    port: 8100
+ssdNotificationService:
+    host: http://ssd-notification
+    port: 9091
+spinnaker:
+    rabbitmq:
+      queue: preview-saas-ssd
+      exchange: echo.events
+      bindingKey: preview-saas-ssd
+projectMonitor:
+    host: http://project-monitor-service
+    port: 9090
+policy:
+    repoURL: "https://github.com/OpsMx/ssd-policies.git"
+    pullReferenceName: "release/2026.07"
+    pullReferenceType: "branch"
+    pollingTime: 240

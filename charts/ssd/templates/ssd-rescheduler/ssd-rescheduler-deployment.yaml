@@ -1,0 +1,170 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ssd-rescheduler
+  labels:
+    app: ssd
+    component: ssd-rescheduler
+{{ include "ssd.standard-labels" . | indent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app: ssd
+      component: ssd-rescheduler
+  template:
+    metadata:
+      labels:
+        app: ssd
+        component: ssd-rescheduler
+{{ include "ssd.standard-labels" . | indent 8 }}
+      annotations:
+        checksum/configmap: {{ include (print $.Template.BasePath "/ssd-rescheduler/ssd-rescheduler-configmap.yaml") . | sha256sum }}
+{{- if .Values.ssdrescheduler.annotations -}}
+        {{ toYaml .Values.ssdrescheduler.annotations | nindent 8 }}
+{{- end }}
+    spec:
+      {{- if and (not .Values.minio.enabled) .Values.toolchain.iamrole }}
+      serviceAccountName: ssd-storage-sa
+      {{- end }}
+      containers:
+        - name: ssd-rescheduler
+          image: {{ template "ssdrescheduler.image" . }}
+          env:
+          {{- if .Values.minio.enabled }}
+          - name: S3_ENDPOINT_HOST
+            value: {{ .Release.Name }}-minio:9000
+          - name: S3_BUCKET
+            value: ssd-temporal
+          {{- else }}
+          - name: S3_BUCKET
+            value: {{ template "s3.bucketname" . }}
+          - name: S3_Region
+            value: {{ .Values.s3region }}
+          - name: S3_Secure
+            value: {{ template "s3.protocolcheck" . }}
+          {{- end }}
+          {{- if .Values.minio.enabled }}
+          - name: AWS_ACCESS_KEY_ID
+            valueFrom:
+              secretKeyRef:
+                key: username
+                name: minio-secret
+          - name: AWS_SECRET_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                key: password
+                name: minio-secret
+          {{- else if and (eq .Values.toolchain.iamrole false) (not .Values.minio.enabled) }}
+          - name: AWS_ACCESS_KEY_ID
+            valueFrom:
+              secretKeyRef:
+                key: accesskey
+                name: ssd-storage-secret
+          - name: AWS_SECRET_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                key: secretkey
+                name: ssd-storage-secret
+          {{- end }}
+          - name: OAUTH_BRIDGE_PRIVATE_KEY
+            valueFrom:
+              secretKeyRef:
+                key: oauth-private-key
+                name: oauth-bridge-client-secrets
+                optional: true
+          envFrom:
+          - configMapRef:
+              name: ssd-proxy-certs
+              optional: true
+          volumeMounts:
+            - name: ssd-public-keys
+              mountPath: /app/ssd-public-keys
+            - name: custom-certs
+              mountPath: /usr/local/share/ca-certificates
+            - name: ssd-rescheduler-volume
+              mountPath: /app/config/ssd-rescheduler.yaml
+              subPath: ssd-rescheduler.yaml
+            - name: token
+              readOnly: true
+              mountPath: /app/secrets/ssd-rescheduler-token/
+            - name: ssdsecret
+              mountPath: /app/secrets/
+              readOnly: true
+      {{- with .Values.ssdrescheduler.resources }}
+          resources:
+      {{- toYaml . | nindent 12 }}
+      {{- end }}
+          securityContext:
+      {{- if .Values.ssdrescheduler.securityContext }}
+      {{ toYaml .Values.ssdrescheduler.securityContext | nindent 12 }}
+      {{- else }}
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+      {{- end }}
+      {{- if .Values.imagePullSecret }}
+      imagePullSecrets:
+      - name: {{ .Values.imagePullSecret }}
+      {{- end }}
+      volumes:
+        - configMap:
+            defaultMode: 420
+            name: ssd-public-keys
+          name: ssd-public-keys
+        - name: token
+          secret:
+            defaultMode: 420
+            secretName: ssd-rescheduler-token
+        - name: ssd-rescheduler-volume
+          configMap:
+            name: ssd-rescheduler-config
+            defaultMode: 420
+            items:
+              - key: ssd-rescheduler.yaml
+                path: ssd-rescheduler.yaml
+            defaultMode: 420
+        - name: ssd-proxy-certs
+          configMap:
+            defaultMode: 420
+            optional: true
+            name: ssd-proxy-certs
+        - name: custom-certs  # Optional: In case we are using any customer-specific custom CAs
+          configMap:
+            defaultMode: 420
+            items:
+            - key: ca.crt
+              path: ca.crt
+            optional: true
+            name: customer-custom-ca
+        - name: ssdsecret
+          secret:
+            defaultMode: 420
+            items:
+              - key: AESEncryptionKey
+                path: ssdsecret/AESEncryptionKey
+            secretName: ssdsecret
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+

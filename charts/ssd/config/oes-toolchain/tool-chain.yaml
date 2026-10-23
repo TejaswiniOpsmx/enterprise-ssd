@@ -1,3 +1,0 @@
-httpListenPort: 8100
-sbomPath: /tools/sbom
-graphQLAddr: http://dgraph-public:8080/graphql

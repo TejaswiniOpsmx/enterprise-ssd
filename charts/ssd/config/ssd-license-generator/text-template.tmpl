@@ -1,0 +1,21 @@
+Artifact:   {{.ArtifactName}}{{if .ArtifactTag}}
+Tag:        {{.ArtifactTag}}{{end}}{{if .ArtifactSHA}}
+SHA:        {{.ArtifactSHA}}{{end}}
+Generated:  {{.GeneratedAt.Format "2006-01-02 15:04:05 MST"}}
+This document contains the licenses for all third-party components used in
+this software.
+Total Components: {{len .Components}}
+{{range .Components}}
+Component: {{.Component.Name}}
+Version:      {{.Component.Version}}{{if .Component.Purl}}
+PURL:         {{.Component.Purl}}{{end}}
+License Type: {{.Component.LicenseType}}{{if .Component.SourceURL}}
+Source URL:   {{.Component.SourceURL}}{{end}}{{if .Component.Copyrights}}
+Copyrights:{{range .Component.Copyrights}}
+  - {{.}}{{end}}{{end}}{{if .Component.LicenseURL}}
+License URL:  {{.Component.LicenseURL}}
+LICENSE TEXT:
+{{readLicenseContent .License.FileName}}{{else}}
+LICENSE TEXT:
+License URL not provided for this component.{{end}}
+{{end}}

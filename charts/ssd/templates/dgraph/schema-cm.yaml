@@ -1,0 +1,12 @@
+apiVersion: v1
+data:
+  schema.graphql: |
+    {{- tpl (.Files.Get "config/dgraph/schema.graphql") . | nindent 4 }}
+kind: ConfigMap
+metadata:
+  name: schema-cm
+  labels:
+    app: ssd
+    component: dgraph
+{{ include "ssd.standard-labels" . | indent 4 }}
+

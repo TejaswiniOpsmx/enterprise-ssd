@@ -1,0 +1,18 @@
+{{- if .Values.installAimlSvcs }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: dlvs-hf-cache
+  labels:
+    app: ssd
+    component: dlvs
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.dlvs.storageMountSize }}
+  {{- if .Values.storageClass }}
+  storageClassName: {{ .Values.storageClass }}
+  {{- end -}}
+{{- end }}

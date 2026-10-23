@@ -1,9 +1,8 @@
 {{- if .Values.global.certManager.installed }}
-{{- if (eq .Values.installationMode "SSD-SPIN") -}}
 apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
-  name: letsencrypt-{{ .Release.Namespace }}-spin
+  name: letsencrypt-{{ .Release.Namespace }}-ssd
 spec:
   acme:
     email: srinivas@opsmx.io
@@ -15,5 +14,4 @@ spec:
     - http01:
         ingress:
           class: nginx
-{{- end }}
 {{- end }}

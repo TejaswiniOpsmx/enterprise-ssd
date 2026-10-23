@@ -1,0 +1,103 @@
+#####################################################
+# This file contains Feb092024 configuration for using
+# SSD with SAML authentication e.g with Okta SAML 2.0
+#####################################################
+
+#k8sServiceType: LoadBalancer
+####################################################
+# Global variables can be accessed across all the charts including sub-charts
+global:
+  # If cert-manager is installed, TLS secrets will created automatically, as an 'Issuer' will be created
+  certManager:  # set to true if cert-manager is installed
+    installed: true
+  createIngress: true
+
+  ssdUI: # URL used to access the application
+    protocol: https
+    host: SSD.REPLACE.THIS.WITH.YOURCOMPANY.COM
+    ingress:
+      annotations:
+        kubernetes.io/ingress.class: nginx
+        nginx.ingress.kubernetes.io/client-header-buffer-size: 100m
+        nginx.ingress.kubernetes.io/proxy-body-size: 500m
+        nginx.ingress.kubernetes.io/proxy-connect-timeout: "18000"
+        nginx.ingress.kubernetes.io/proxy-read-timeout: "18000"
+        nginx.ingress.kubernetes.io/proxy-send-timeout: "18000"
+
+#######################################################################
+### Change the Organisation name if user wants a different name in the UI
+organisationname: opsmx
+
+### Admin groups for Rbac #############################################
+admingroups: admin
+
+############ Update the Prometheus Ingress Url ###############################
+prometheusUrl: Promethues.ingress.url.com
+##############################################################################
+###############################################################################
+ssdgate:
+  installDex: false   # set to true if dex need to be installed
+  createGateDexSecret: false
+  auth_type: saml  # saml, dex-oidc and poclogin are other valid values
+  display_name: SAML Login
+  admin_groups:
+  - admin
+  saml:
+    metadata_url: UPDATE.SAML.METADATA.URL
+    saml_initiated_login: true
+    # If the metadata Url is not passed then comment the section
+    entity_id: https://SSD.REPLACE.THIS.WITH.YOURCOMPANY.COM/saml/acs
+    #kubectl create secret generic saml-files --from-file metadata.xml -n NAMESPACE (Do not change the Secret name)
+    metadata_File: /app/saml/metadata.xml
+#######################################################################################################################
+#### Update the below paramerts only if the user want the Migrate the Existing Data to HA Setup for DGraph ############
+#######################################################################################################################
+dgraph:
+  storageMountSize: 5Gi
+  HA:
+    enabled: false
+    replicas: 3
+    migrateolddata: true
+    ### Update the S3 Bucket Name where the existing Dgraph Data is stored  #########################################
+    s3bucketurl: s3:///S3BUCKETNAME/DGRAPHFOLDER
+    saAnnotations: {}
+
+###################################################################################################
+toolchain:
+  ### Change to true if user wants IAM role to use the Kubernetes service accounts to Access S3 Buckets ##################
+  iamrole: false
+  ### Update the Annotations so IAM role uses the Kubernetes service accounts to Access S3 Buckets ##################
+  saAnnotations: {}
+  #  eks.amazonaws.com/role-arn: arn:aws:iam::111122223333:role/<iam role name>
+################################################################################################
+supplychainapi:
+  ## Below is the parameter to load the data in the UI
+  cachePollingInterval: 6
+  ## Below is the command used to get the IssuerID ###
+  ## kubectl get --raw /.well-known/openid-configuration | jq -r .issuer ###
+  ssdIssuer:
+  whitelist_Urls:
+    - https://api.github.com
+    - https://api.gitlab.com
+################################################################################################
+## Change this true if user need to enable the AIModel Scan ####################################
+## If true AI Shield and DLVS Services will be installed #######################################
+installAimlSvcs: false
+################################################################################################
+#####User doesn't need to change the below flags let it be the default one######################
+storageClass:
+#### Change to false if user want to Use AWS S3 bucket to store the scan data ##################
+minio:
+  enabled: true
+  persistence:
+    storageClass: ""
+    size: 10Gi
+  service:
+    type: ClusterIP
+################################################################################################
+### Update the below parameters only if minio.enabled is false ########
+### Update the S3 Bucket REGION in AWS #######################################
+s3region: UPDATE.S3BUCKETREGION
+s3bucketurl: https://S3BUCKETNAME.s3.S3BUCKETREGION.amazonaws.com
+
+RabbitServiceType: ClusterIP

@@ -1,0 +1,21 @@
+server:
+  host: "0.0.0.0"
+  port: 8082
+  read_timeout: 10s
+  write_timeout: 10s
+  idle_timeout: 120s
+# PostgreSQL connection defaults - host/port/database/user/password are
+# normally overridden per-environment via POSTGRES_HOST, POSTGRES_PORT,
+# DATABASE_NAME, POSTGRES_USER, POSTGRES_PASSWORD env vars (see Deployment).
+# These values are only used as a fallback if those env vars are unset.
+postgres:
+  host: "{{ .Values.db.host }}"
+  port: 5432
+  database: "ssd-licensedb"
+  ssl_mode: disable
+  max_open_conns: 25
+  max_idle_conns: 5
+  conn_max_lifetime: 5m
+logging:
+  level: "info"
+  format: "json"

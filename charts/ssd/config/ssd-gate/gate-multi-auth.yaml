@@ -1,0 +1,94 @@
+ssd_baseurl: {{.Values.global.ssdUI.protocol}}://{{.Values.global.ssdUI.host}}
+
+{{- if .Values.ssdgate.home_page }}
+home_page: {{.Values.ssdgate.home_page }}
+{{- end }}
+{{- if .Values.ssdgate.session_timeout }}
+session_timeout: {{.Values.ssdgate.session_timeout }}
+{{- end }}
+{{- if .Values.ssdgate.skipstartcheck }}
+skipstartcheck: {{.Values.ssdgate.skipstartcheck }}
+{{- end }}
+{{- if .Values.ssdgate.dex_url }}
+dex_url: {{ .Values.ssdgate.dex_url }}
+{{- end }}
+{{- if eq .Values.global.ssdUI.protocol "http" }}
+force_secure_cookies: false
+{{- end }}
+audit:
+  enabled: true
+token_expiry_hours: {{ .Values.ssdgate.uiteamtokenexpiry }}
+admin_groups:
+{{- toYaml .Values.ssdgate.admin_groups |nindent 0 }}
+
+auth_configs:
+  - type: "poclogin"
+    name: "admin"
+    display_name: "OpsMx Login"
+{{- if eq .Values.ssdgate.auth_type "saml"}}
+  - type: "saml"
+    name: "Saml-login"
+    display_name: {{ .Values.ssdgate.display_name | quote }}
+    saml:
+      {{- if .Values.ssdgate.saml.metadata_url }}
+      metadata_url: {{ .Values.ssdgate.saml.metadata_url }}
+      {{- end }}
+      {{- if .Values.ssdgate.saml.entity_id }}
+      entity_id: {{ .Values.ssdgate.saml.entity_id }}
+      {{- end }}
+      {{- if .Values.ssdgate.saml.acs_endpoint }}
+      acs_endpoint: {{ .Values.ssdgate.saml.acs_endpoint }}
+      {{- end }}
+      {{- if .Values.ssdgate.saml.saml_initiated_login }}
+      saml_initiated_login: {{ .Values.ssdgate.saml.saml_initiated_login }} # OPTIONAL Required for logging in from okta-tiles
+      {{- end }}
+      {{- if .Values.ssdgate.saml.sign_request }}
+      sign_request: {{ .Values.ssdgate.saml.sign_request }} # DEPENDS Default is false, make it match the SAML setting
+      {{- end }}
+      {{- if .Values.ssdgate.saml.metadata_File }}
+      metadata_File: {{ .Values.ssdgate.saml.metadata_File }}  # OPTIONAL One of metadata url or file required, url preferred
+      {{- end }}
+      {{- if .Values.ssdgate.saml.session_crt_file }}
+      session_crt_file: {{ .Values.ssdgate.saml.session_crt_file }} # OPTIONAL
+      {{- end }}
+      {{- if .Values.ssdgate.saml.session_key_file }}
+      session_key_file: {{ .Values.ssdgate.saml.session_key_file }} #  OPTIONAL
+      {{- end }}
+      {{- with .Values.ssdgate.saml.entity_map }}
+      entity_map:
+      {{- toYaml . | nindent 4 }}
+      {{- end }}
+{{- else }}
+{{- if eq .Values.ssdgate.auth_type "dex_oidc" }}
+  - type: "dex_oidc"
+    name: "Dex-Login"
+    display_name: {{ .Values.ssdgate.display_name | quote }}
+    oidc:
+      {{- if .Values.ssdgate.auth2_oidc.client_id }}
+      client_id: {{.Values.ssdgate.auth2_oidc.client_id }}
+      {{- else }}
+      client_id_env: DEX_CLIENT_ID
+      {{- end }}
+      client_secret_env: DEX_CLIENT_SECRET
+      {{- if .Values.ssdgate.auth2_oidc.well_known_url }}
+      well_known_url: {{ .Values.ssdgate.auth2_oidc.well_known_url | quote }}
+      {{- else }}
+      well_known_url: "http://{{.Release.Name }}-dex:5556/dex/.well-known/openid-configuration"
+      {{- end }}
+      {{- if .Values.ssdgate.auth2_oidc.userinfo_url }}
+      userinfo_url: {{ .Values.ssdgate.auth2_oidc.userinfo_url | quote }}
+      {{- end }}
+      {{- with .Values.ssdgate.auth2_oidc.endpoint }}
+      endpoint:
+      {{- toYaml . | nindent 4 }}
+      {{- end }}
+      {{- with .Values.ssdgate.auth2_oidc.entity_map }}
+      entity_map:
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.ssdgate.auth2_oidc.scopes }}
+      scopes:
+      {{- toYaml . | nindent 4 }}
+      {{- end }}
+{{- end }}
+{{- end }}

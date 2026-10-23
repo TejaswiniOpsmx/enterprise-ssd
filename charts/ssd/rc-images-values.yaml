@@ -1,0 +1,127 @@
+imageCredentials:
+  repoUrl: docker.io
+  # Update this is using a private repo such as ACR, ECR, GCR, JFrog, etc.
+  registry: opsmx11
+aibom:
+  image:
+    tag: "2026-07-00"
+    
+aishield:
+  image:
+    tag: "2026-07-00"
+
+artifactscan:
+  image:
+    tag: "2026-07-00"
+
+airemediation:
+  image:
+    tag: "2026-07-00"
+
+cbom:
+  image:
+    tag: "2.1.12"
+
+checkmarx:
+  image:
+    tag: "2026-07-00"
+
+dlvs:
+  image:
+    tag: "b5b8de1-4"
+
+kubescape:
+  image:
+    tag: "2026-07-00"
+
+licensegenerator:
+  image:
+    tag: "2026-07-00"
+
+mobsf:
+  image:
+    tag: "v4.1.3"
+
+opsmxassistant:
+  image:
+    tag: "2026-07-00"
+
+projectmonitor:
+  image:
+    tag: "2026-07-00"
+
+prismiac:
+  image:
+    tag: "2026-07-00"
+
+pentestgpt:
+  image:
+    tag: "2026-07-00"
+
+snykmonitor:
+  image:
+    tag: "2026-07-00"
+
+sourcescan:
+  image:
+    tag: "2026-07-00"
+
+supplychainapi:
+  image:
+    tag: "2026-07-00"
+
+supplychainpreprocessor:
+  image:
+    tag: "2026-07-00"
+
+ssdauditservice:
+  image:
+    tag: "2026-07-00"
+
+ssdgate:
+  image:
+    repository: ssd-gate
+    tag: "2026-07-00"
+
+ssdnotificationservice:
+  image:
+    tag: "2026-07-00"
+
+ssdopa:
+  image:
+    tag: "2026-07-00"
+
+ssdrescheduler:
+  image:
+    tag: "2026-07-00"
+
+tokenmachine:
+  image:
+    tag: "6a6e427-77"
+
+toolchain:
+  image:
+    tag: "2026-07-00"
+
+ui:
+  image:
+    tag: "2026-07-00"
+  serviceAnnotations:
+    awsAnnotationsGo: HERE
+
+aws-poller:
+  image:
+    tag: "2026-07-00"
+
+kubernetes-detector:
+  image:
+    tag: "2026-07-00"
+
+mcpserver:      
+  image:
+    tag: "2026-07-00"
+
+zap:
+  image:
+    repository: zap
+    tag: "2026-03-00"

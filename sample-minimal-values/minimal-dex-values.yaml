@@ -1,0 +1,49 @@
+#####################################################
+# This is a minimal configuration needed for SSD Installation
+# Using Dex authentication. 
+#####################################################
+
+global:
+  # when this flag is set to false; UI will be accessible over http instead of https
+  ssl:
+    enabled: true
+
+  # If cert-manager is installed, TLS secrets will created automatically, as an 'Issuer' will be created
+  # Else, the TLS secrets will need to created manually
+  certManager:
+    installed: true
+
+  customCerts:
+    enabled: false        # Set to true if your organization requires custom TLS certs
+    secretName: oes-cacerts # Please do not change this
+
+  ## Set to true to expose oes-ui, oes-gate services over ingress
+  createIngress: true
+
+  ## OES-UI url configuration, defaults to http://localhost:8080
+  oesUI:
+    protocol: https
+    host: poc-ssd.ryzon7-isd40.opsmx.org 
+
+###############################################################################
+ssdgate:
+  auth_type: dex_oidc  # saml, dex-oidc and poclogin are other valid values
+#  admin_groups:
+#  - admin
+  auth2_oidc:
+    client_id: ssd-gate
+    connectors: 
+    - type: saml
+      id: okta
+      name: Okta
+      config:
+        # Single Sign Ok URL - in Okta get it after completing the configuration, "view SAML setup instructions"
+        ssoURL: https://dev-14704582.okta.com/app/dev-14704582_dex_1/exkdkpy0xoMNPZ8AX5d7/sso/saml
+        # Download this from "Sign on" tab (next to general), "SAML Signing Certificates", Actions->Download
+        ca: /etc/dex/okta.crt  # Include this in the gate-dex-config secret
+        redirectURI: https://poc-ssd.ryzon7-isd40.opsmx.org/dex/callback
+        usernameAttr: email
+        emailAttr: email
+        groupsAttr: groups
+
+

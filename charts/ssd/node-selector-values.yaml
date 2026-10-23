@@ -1,0 +1,113 @@
+#########################################################################################################
+############This Yaml file is used only for the nodeslectors,Affinity and Tolerations####################
+#########################################################################################################
+############# Node Selectors,Affinity, Tolerations section for Minio Chart ##############################
+global:
+  minio:
+    podAnnotations: {}
+    nodeSelector: {}
+    affinity: {}
+    tolerations: []
+#########################################################################################################
+############# Node Selectors,Affinity, Tolerations section for SSD Components ###########################
+nodeSelector: {}
+tolerations: []
+affinity: {}
+topologySpreadConstraints: []
+dex:
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  topologySpreadConstraints: []
+
+########################################################################################################
+############# Node Selectors,Affinity, Tolerations section for Redis Chart #############################
+########################################################################################################
+## Details of redis-master image for OES
+redis:
+  master:
+    podAnnotations: {}
+    nodeSelector: {}
+    affinity: {}
+    tolerations: []
+
+########################################################################################################
+############# Node Selectors,Affinity, Tolerations section for Temporal Chart #############################
+########################################################################################################
+temporal:
+  server:
+    podAnnotations: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    frontend:
+      service:
+        podAnnotations: {}
+        nodeSelector: {}
+        tolerations: []
+        affinity: {}
+        topologySpreadConstraints: {}
+    history:
+      service:
+        podAnnotations: {}
+        nodeSelector: {}
+        tolerations: []
+        affinity: {}
+        topologySpreadConstraints: {}
+    matching:
+      service:
+        podAnnotations: {}
+        nodeSelector: {}
+        tolerations: []
+        affinity: {}
+        topologySpreadConstraints: {}
+    worker:
+      service:
+        podAnnotations: {}
+        nodeSelector: {}
+        tolerations: []
+        affinity: {}
+        topologySpreadConstraints: {}
+  web:
+    podAnnotations: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+
+  admintools:
+    podAnnotations: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+###############################################################################
+db:
+  annotations: {}
+  serviceAnnotations: {}
+####################################################
+toolchain:
+  annotations: {}
+  serviceAnnotations: {}
+####################################################
+supplychainpreprocessor:
+  annotations: {}
+  serviceAnnotations: {}
+####################################################
+ssdopa:
+  annotations: {}
+####################################################
+supplychainapi:
+  annotations: {}
+  serviceAnnotations: {}
+######################################################
+tokenmachine:
+  annotations: {}
+  serviceAnnotations: {}
+###############################################################################
+rabbitmq:
+  annotations: {}
+  serviceAnnotations: {}
+###############################################################################
+ui:
+  annotations: {}
+  serviceAnnotations: {}
+

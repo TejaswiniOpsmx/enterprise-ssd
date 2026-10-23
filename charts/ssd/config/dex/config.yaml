@@ -1,0 +1,55 @@
+# https://github.com/dexidp/dex/blob/master/config.yaml.dist
+
+{{- if eq .Values.global.ssdUI.host "localhost" }}
+issuer: {{.Values.global.ssdUI.protocol}}://{{.Values.global.ssdUI.host}}:{{.Values.global.ssdUI.port}}/dex
+web:
+  http: {{.Values.global.ssdUI.protocol}}://{{.Values.global.ssdUI.host}}:{{.Values.global.ssdUI.port}}/dex
+{{- else }}
+issuer: {{.Values.global.ssdUI.protocol}}://{{.Values.global.ssdUI.host}}/dex
+web:
+  http: {{.Values.global.ssdUI.protocol}}://{{.Values.global.ssdUI.host}}/dex
+{{- end }}
+
+storage:
+  type: memory
+oauth2:
+  skipApprovalScreen: true
+
+# Frontend configuration for custom templates
+frontend:
+  dir: /srv/dex/web
+  issuer: "OpsMx SSD"
+  extra:
+    ssd_base_url: "{{.Values.global.ssdUI.protocol}}://{{.Values.global.ssdUI.host}}"
+
+# Static clients registered in Dex by default.
+staticClients:
+  - id: ssd-gate
+    redirectURIs:
+      - 'http://ssd-gate:8084/oidccallbackendpoint'
+{{- if eq .Values.global.ssdUI.host "localhost" }}
+      - {{.Values.global.ssdUI.protocol}}://{{.Values.global.ssdUI.host}}:{{.Values.global.ssdUI.port}}/oidccallbackendpoint
+{{- else }}
+      - {{.Values.global.ssdUI.protocol}}://{{.Values.global.ssdUI.host}}/oidccallbackendpoint
+{{- end }}
+    name: 'ssd gate'
+    secretEnv: GATE_CLIENT_SECRET
+
+{{- if .Values.ssdgate.auth2_oidc.connectors }}
+{{- with .Values.ssdgate.auth2_oidc.connectors }}
+connectors:
+{{- toYaml . | nindent 2 }}
+{{- end }}
+{{- else }}
+connectors: []
+{{- end }}
+
+# Connectors are used to authenticate users against upstream identity providers.
+# Enable the password database.
+enablePasswordDB: false
+# A static list of passwords for the password connector.
+#staticPasswords:
+#- email: "admin@opsmx.io"
+#  hash: "$2y$10$oVR6AAUpc.oitoRoRRuETu4qY/8ZzQjcIGmGUQMjMKp9vOeWv6C7C"    # password is password
+#  username: "admin"
+#  userID: "08a8684b-db88-4b73-90a9-3cd1661f5466"

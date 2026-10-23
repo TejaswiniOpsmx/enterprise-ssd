@@ -1,0 +1,12 @@
+{{- if .Values.installAimlSvcs }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aishield-config
+  labels:
+    app: ssd
+    component: aishield
+{{ include "ssd.standard-labels" . | indent 4 }}
+data:
+{{ (tpl (.Files.Glob "config/aishield/config.yaml").AsConfig . ) | indent 2 }}
+{{- end }}

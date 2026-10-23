@@ -1,0 +1,19 @@
+rabbitmq:
+  queue: isd-to-preview-saas
+  #queue: preview-saas-ssd
+  exchange: echo.events
+  bindingKey: preview-saas-ssd
+  prefetchCount: 200
+graphql:
+  {{- if .Values.dgraph.HA.enabled }}
+  host: http://dgraph-alpha-public
+  {{- else }}
+  host: http://dgraph-public
+  {{- end }}
+  port: 8080
+supplychainapi:
+  host: http://supplychain-api
+  port: 8099
+ssdopasvc:
+  host: http://ssd-opa
+  port: 8200

@@ -1,0 +1,30 @@
+---
+# Source: SSD/templates/ssd-gate/ssd-gate-config.yaml
+apiVersion: v1
+data:
+  ssd-gate-config.yaml: |
+    ssd_baseurl: http://localhost:8080
+    
+    auth_type: poclogin
+    auth2_oidc:
+      client_id: ssd-gate
+      client_secret: "encrypted:gate-dex-client-secret:client-secret"
+      userinfo_url: "http://ssd-dex:5556/dex/userinfo"
+      endpoint:
+        auth_url:  "http://localhost:8080/dex/auth"
+        token_url: "http://ssd-dex:5556/dex/token"
+      entity_map:
+        user_name: email
+      scopes:
+        - openid
+        - offline_access
+    
+kind: ConfigMap
+metadata:
+  name: ssd-gate-config
+  labels:
+    app: ssd
+    component: gate
+    heritage: "Helm"
+    release: "ssd"
+    chart: "SSD-4.0.9"

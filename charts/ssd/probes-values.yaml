@@ -1,0 +1,269 @@
+dgraph:
+  probes:
+    livenessProbe:
+      failureThreshold: 3
+      httpGet:
+        path: /health
+        port: 8080
+        scheme: HTTP
+      initialDelaySeconds: 5
+      periodSeconds: 10
+      successThreshold: 1
+      timeoutSeconds: 1
+    readinessProbe:
+      failureThreshold: 3
+      httpGet:
+        path: /health
+        port: 8080
+        scheme: HTTP
+      initialDelaySeconds: 5
+      periodSeconds: 10
+      successThreshold: 1
+      timeoutSeconds: 1
+    startupProbe:
+      failureThreshold: 240
+      periodSeconds: 10
+      successThreshold: 1
+      tcpSocket:
+        port: 7080
+      timeoutSeconds: 1
+###############################################################################
+ssdgate:
+  probes:
+    livenessProbe:
+      failureThreshold: 6
+      httpGet:
+        path: /healthz
+        port: 8001
+        scheme: HTTP
+      periodSeconds: 20
+      successThreshold: 1
+      timeoutSeconds: 1
+    readinessProbe:
+      failureThreshold: 6
+      httpGet:
+        path: /healthz
+        port: 8001
+        scheme: HTTP
+      periodSeconds: 20
+      successThreshold: 1
+      timeoutSeconds: 1
+###############################################################################
+db:
+  probes:
+    livenessProbe:
+      failureThreshold: 3
+      initialDelaySeconds: 45
+      periodSeconds: 10
+      successThreshold: 1
+      tcpSocket:
+        port: 5432
+        timeoutSeconds: 5
+    readinessProbe:
+      failureThreshold: 3
+      initialDelaySeconds: 10
+      periodSeconds: 5
+      successThreshold: 1
+      tcpSocket:
+        port: 5432
+        timeoutSeconds: 1
+####################################################
+toolchain:
+  probes:
+    livenessProbe:
+      failureThreshold: 6
+      httpGet:
+        path: /health
+        port: 8100
+        scheme: HTTP
+      periodSeconds: 20
+      initialDelaySeconds: 30
+      successThreshold: 1
+      timeoutSeconds: 1
+    readinessProbe:
+      failureThreshold: 6
+      httpGet:
+        path: /health
+        port: 8100
+        scheme: HTTP
+      periodSeconds: 20
+      initialDelaySeconds: 30
+      successThreshold: 1
+      timeoutSeconds: 1
+####################################################
+supplychainpreprocessor:
+  probes:
+    livenessProbe:
+      failureThreshold: 3
+      httpGet:
+        path: /healthz
+        port: 8058
+        scheme: HTTP
+      periodSeconds: 20
+      successThreshold: 1
+      timeoutSeconds: 1
+    readinessProbe:
+      failureThreshold: 6
+      httpGet:
+        path: /healthz
+        port: 8058
+        scheme: HTTP
+      periodSeconds: 20
+      successThreshold: 1
+      timeoutSeconds: 1
+####################################################
+ssdopa:
+  probes:
+    livenessProbe:
+      failureThreshold: 20
+      httpGet:
+        path: /health
+        port: 8200
+        scheme: HTTP
+      periodSeconds: 15
+      initialDelaySeconds: 30
+      successThreshold: 1
+      timeoutSeconds: 1
+    readinessProbe:
+      failureThreshold: 20
+      httpGet:
+        path: /health
+        port: 8200
+        scheme: HTTP
+      periodSeconds: 15
+      initialDelaySeconds: 30
+      successThreshold: 1
+      timeoutSeconds: 1
+####################################################
+supplychainapi:
+  probes:
+    livenessProbe:
+      failureThreshold: 3
+      httpGet:
+        path: /healthz
+        port: 8099
+        scheme: HTTP
+      periodSeconds: 20
+      successThreshold: 1
+      timeoutSeconds: 1
+    readinessProbe:
+      failureThreshold: 12
+      httpGet:
+        path: /healthz
+        port: 8099
+        scheme: HTTP
+      periodSeconds: 20
+      successThreshold: 1
+      timeoutSeconds: 1
+######################################################
+tokenmachine:
+  probes:
+    livenessProbe:
+      failureThreshold: 60
+      periodSeconds: 10
+      successThreshold: 1
+      tcpSocket:
+        port: 8050
+      timeoutSeconds: 1
+    readinessProbe:
+      failureThreshold: 60
+      periodSeconds: 10
+      successThreshold: 1
+      tcpSocket:
+        port: 8050
+      timeoutSeconds: 1
+#######################################################
+ssdauditservice:
+  probes:
+    livenessProbe:
+      exec:
+        command:
+        - /bin/sh
+        - -c
+        - ps aux | grep consumer | grep -v grep
+      failureThreshold: 3
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      successThreshold: 1
+      timeoutSeconds: 1
+    readinessProbe:
+      exec:
+        command:
+        - /bin/sh
+        - -c
+        - ps aux | grep consumer | grep -v grep
+      failureThreshold: 3
+      initialDelaySeconds: 10
+      periodSeconds: 5
+      successThreshold: 1
+      timeoutSeconds: 1
+###############################################################################
+rabbitmq:
+  probes:
+    livenessProbe:
+      failureThreshold: 3
+      initialDelaySeconds: 150
+      periodSeconds: 10
+      successThreshold: 1
+      tcpSocket:
+        port: 5672
+      timeoutSeconds: 1
+###############################################################################
+ui:
+  probes:
+    readinessProbe:
+      tcpSocket:
+        port: 8080
+      failureThreshold: 3
+      initialDelaySeconds: 15
+      periodSeconds: 5
+      successThreshold: 1
+      timeoutSeconds: 1
+    livenessProbe:
+      failureThreshold: 3
+      httpGet:
+        path: /ui/indexl.html
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 5
+      successThreshold: 1
+      timeoutSeconds: 1
+#############################################################################
+mobsf:
+  probes:
+    livenessProbe:
+      failureThreshold: 3
+      initialDelaySeconds: 150
+      periodSeconds: 10
+      successThreshold: 1
+      tcpSocket:
+        port: 8000
+      timeoutSecond: 1
+    readinessProbe:
+      failureThreshold: 3
+      initialDelaySeconds: 150
+      periodSeconds: 10
+      successThreshold: 1
+      tcpSocket:
+        port: 8000
+      timeoutSeconds: 2
+##############################################################################
+zap:
+  probes:
+    livenessProbe:
+      failureThreshold: 60
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      successThreshold: 1
+      tcpSocket:
+        port: 8080
+      timeoutSecond: 2
+    readinessProbe:
+      failureThreshold: 60
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      successThreshold: 1
+      tcpSocket:
+        port: 8080
+      timeoutSeconds: 2
+#########################################################################

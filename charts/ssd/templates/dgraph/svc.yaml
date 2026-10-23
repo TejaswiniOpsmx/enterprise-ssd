@@ -1,9 +1,100 @@
+{{- if .Values.dgraph.HA.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: dgraph-zero-public
+  labels:
+    app: dgraph-zero
+    monitor: zero-dgraph-io
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5080
+    targetPort: 5080
+    name: grpc-zero
+  - port: 6080
+    targetPort: 6080
+    name: http-zero
+  selector:
+    app: dgraph-zero
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dgraph-alpha-public
+  labels:
+    app: dgraph-alpha
+    monitor: alpha-dgraph-io
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8080
+    targetPort: 8080
+    name: http-alpha
+  - port: 9080
+    targetPort: 9080
+    name: grpc-alpha
+  selector:
+    app: dgraph-alpha
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dgraph-ratel-public
+  labels:
+    app: dgraph-ratel
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8000
+    targetPort: 8000
+    name: http-ratel
+  selector:
+    app: dgraph-ratel
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dgraph-zero
+  labels:
+    app: dgraph-zero
+spec:
+  ports:
+  - port: 5080
+    targetPort: 5080
+    name: grpc-zero
+  clusterIP: None
+  publishNotReadyAddresses: true
+  selector:
+    app: dgraph-zero
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dgraph-alpha
+  labels:
+    app: dgraph-alpha
+spec:
+  ports:
+  - port: 7080
+    targetPort: 7080
+    name: grpc-alpha-int
+  clusterIP: None
+  publishNotReadyAddresses: true
+  selector:
+    app: dgraph-alpha
+{{- else }}
 apiVersion: v1
 kind: Service
 metadata:
   name: dgraph-public
   labels:
-    app: dgraph
+    app: ssd
+    component: dgraph
+{{- if .Values.dgraph.serviceAnnotations }}
+  annotations:
+{{ toYaml .Values.dgraph.serviceAnnotations | indent 4 }}
+{{- end }}
 spec:
   type: ClusterIP
   ports:
@@ -23,4 +114,6 @@ spec:
     targetPort: 8000
     name: http-ratel
   selector:
-    app: dgraph
+    app: ssd
+    component: dgraph
+{{- end }}

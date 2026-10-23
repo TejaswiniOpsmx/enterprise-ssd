@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: artifact-scan-config
+  labels:
+    app: ssd
+    component: artifact-scan
+{{ include "ssd.standard-labels" . | indent 4 }}
+data:
+  artifact-scan.yaml: |
+    {{- tpl (.Files.Get "config/artifact-scan/artifact-scan.yaml") . | nindent 4 }}

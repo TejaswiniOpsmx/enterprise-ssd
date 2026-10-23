@@ -1,0 +1,21 @@
+{{- if .Values.ssdgate.installDex }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dex-templates
+  labels:
+    app: ssd
+    component: dex
+{{ include "ssd.standard-labels" . | indent 4 }}
+data:
+  error.html: |-
+{{ .Files.Get "config/dex/error.html" | indent 4 }}
+  footer.html: |- 
+    ""
+  header.html: |- 
+    ""
+  login.html: |-
+{{ .Files.Get "config/dex/login.html" | indent 4 }}
+  password.html: |-
+{{ .Files.Get "config/dex/password.html" | indent 4 }}
+{{- end }}

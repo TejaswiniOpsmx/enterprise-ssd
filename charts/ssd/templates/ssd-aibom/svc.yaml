@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: ssd
+    component: ssd-aibom
+  name: aibom-service
+{{- if .Values.aibom.serviceAnnotations }}
+  annotations:
+{{ toYaml .Values.aibom.serviceAnnotations | indent 4 }}
+{{- end }}
+spec:
+  ports:
+  - name: http
+    port: 8082
+    targetPort: 8082
+  selector:
+    app: ssd
+    component: ssd-aibom
+  sessionAffinity: None
+  type: ClusterIP

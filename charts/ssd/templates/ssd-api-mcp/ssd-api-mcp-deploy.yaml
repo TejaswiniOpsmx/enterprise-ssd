@@ -1,0 +1,148 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ssd-api-mcp
+  labels:
+    app: ssd
+    component: ssd-api-mcp
+{{ include "ssd.standard-labels" . | indent 4 }}
+spec:
+  replicas: {{ .Values.mcpserver.replicaCount }}
+  selector:
+    matchLabels:
+      app: ssd
+      component: ssd-api-mcp
+  template:
+    metadata:
+      labels:
+        app: ssd
+        component: ssd-api-mcp
+{{ include "ssd.standard-labels" . | indent 8 }}
+      annotations:
+{{- if .Values.mcpserver.annotations -}}
+        {{ toYaml .Values.mcpserver.annotations | nindent 8 }}
+{{- end }}
+    spec:
+      initContainers:
+      - name: wait-for-dgraph
+        image: curlimages/curl:8.5.0
+        env:
+          {{- if .Values.dgraph.HA.enabled }}
+          - name: DGRAPH_URL
+            value: http://dgraph-alpha-public:8080
+          {{- else }}
+          - name: DGRAPH_URL
+            value: http://dgraph-public:8080
+          {{- end }}
+          - name: WAIT_TIMEOUT_SECONDS
+            value: "300"
+          - name: POLL_INTERVAL_SECONDS
+            value: "5"
+        command:
+          - /bin/sh
+          - -c
+        args:
+          - |
+            set -e
+            END=$(( $(date +%s) + WAIT_TIMEOUT_SECONDS ))
+            echo "[wait-for-dgraph] target=$DGRAPH_URL timeout=${WAIT_TIMEOUT_SECONDS}s"
+            # Health only — no auth needed. Schema presence is handled
+            # resiliently by the main container (non-fatal lazy load), so we
+            # don't probe /admin (which requires auth) here.
+            until curl -sf "$DGRAPH_URL/health" > /dev/null 2>&1; do
+              if [ "$(date +%s)" -gt "$END" ]; then
+                echo "[wait-for-dgraph] FAIL: alpha not healthy"
+                exit 1
+              fi
+              sleep "$POLL_INTERVAL_SECONDS"
+            done
+            echo "[wait-for-dgraph]   alpha healthy — proceeding"
+      containers:
+        - name: ssd-api-mcp
+          image: {{ template "mcpserver.image" . }}
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          env:
+          - name: DGRAPH_TOKEN_PATH
+            value: /etc/ssd-api-mcp-token/token
+          - name: SSD_API_KEY
+            valueFrom:
+              secretKeyRef:
+                key: ssd-api-key
+                name: ssd-api-mcp-secret
+                optional: true
+          volumeMounts:
+            - name: config
+              mountPath: /etc/ssd-api-mcp                                                    
+              readOnly: true                                                                 
+            - name: dgraph-token                                                             
+              mountPath: /etc/ssd-api-mcp-token                                              
+        {{- with .Values.mcpserver.probes }}
+        {{- toYaml . | nindent 10 }}
+        {{- else }}
+          livenessProbe:
+            failureThreshold: 20
+            httpGet:
+              path: /healthz
+              port: 8080 
+            periodSeconds: 15
+            initialDelaySeconds: 30
+            successThreshold: 1
+            timeoutSeconds: 1
+          readinessProbe:
+            failureThreshold: 20
+            httpGet:
+              path: /healthz
+              port: 8080
+            periodSeconds: 15
+            initialDelaySeconds: 30
+            successThreshold: 1
+            timeoutSeconds: 1
+        {{- end }}
+      {{- with .Values.mcpserver.resources }}
+          resources:
+      {{- toYaml . | nindent 12 }}
+      {{- end }}
+          securityContext:
+      {{- if .Values.mcpserver.securityContext }}
+      {{ toYaml .Values.mcpserver.securityContext | nindent 12 }}
+      {{- else }}
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+      {{- end }}
+      {{- if .Values.imagePullSecret }}
+      imagePullSecrets:
+      - name: {{ .Values.imagePullSecret }}
+      {{- end }}
+      volumes:
+        - configMap:
+            defaultMode: 420
+            name: ssd-api-mcp-config
+          name: config
+        - name: dgraph-token
+          secret:
+            defaultMode: 420
+            secretName: ssd-api-mcp-token
+            optional: true
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

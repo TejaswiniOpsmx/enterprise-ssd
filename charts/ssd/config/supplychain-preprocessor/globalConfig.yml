@@ -1,0 +1,8 @@
+plugins:
+  - argocd
+  - jenkins
+  - spinnaker
+  - githubactions
+  - bitbucket
+loglevel: {{ .Values.supplychainpreprocessor.loglevel }}
+auditEnabled: true

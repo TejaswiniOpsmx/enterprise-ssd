@@ -1,0 +1,29 @@
+# Development/Production Settings
+HASURA_GRAPHQL_DEV_MODE: "false"
+HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
+
+# GraphQL Endpoint Configuration
+HASURA_GRAPHQL_ENDPOINT: /graphql
+
+# Security Settings
+HASURA_GRAPHQL_ENABLE_REMOTE_SCHEMA_PERMISSIONS: "false"
+HASURA_GRAPHQL_ENABLE_TELEMETRY: "false"
+
+# Performance Settings
+HASURA_GRAPHQL_QUERY_CACHE_SIZE: "100"
+HASURA_GRAPHQL_REMOTE_SCHEMA_TIMEOUT_SECONDS: "60"
+
+# Logging Configuration
+HASURA_GRAPHQL_LOG_LEVEL: info
+HASURA_GRAPHQL_ENABLED_LOG_TYPES: startup, http-log, webhook-log, websocket-log
+
+# Database Configuration
+HASURA_GRAPHQL_STRINGIFY_NUMERIC_TYPES: "false"
+HASURA_GRAPHQL_USE_PREPARED_STATEMENTS: "false"
+
+# CORS Configuration
+HASURA_GRAPHQL_CORS_DOMAIN: "*"
+HASURA_GRAPHQL_DISABLE_CORS: "false"
+
+# WebSocket Configuration
+HASURA_GRAPHQL_WS_READ_COOKIE: "false"

@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ssd-license-generator
+  labels:
+    app: ssd
+    component: license-generator
+{{ include "ssd.standard-labels" . | indent 4 }}
+{{- if .Values.licensegenerator.serviceAnnotations }}
+  annotations:
+{{ toYaml .Values.licensegenerator.serviceAnnotations | indent 4 }}
+{{- end }}
+spec:
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP
+  selector:
+    app: ssd
+    component: license-generator

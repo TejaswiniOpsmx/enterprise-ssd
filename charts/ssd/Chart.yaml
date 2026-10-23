@@ -1,45 +1,27 @@
 apiVersion: v2
-name: oes
-version: 4.0.9
-appVersion: 4.0.3
-description: "ISD and Spinnaker with v1.28.4"
+name: ssd
+version: "2026.07.01"
+appVersion: "2026.07.00"
+description: "OpsMx Secure Software Delivery for CI/CD"
 icon: https://raw.githubusercontent.com/OpsMx/enterprise-spinnaker/master/img/opsmx.png
 maintainers:
-- email: srinivas@opsmx.io
-  name: ksrinimba
+- email: saiteja.katabhatina@opsmx.io
+  name: Sai Teja K
 keywords:
   - OpsMx
-  - OES
-  - Autopilot
+  - SSD
 home: https://www.opsmx.com/
 dependencies:
-  - name: openldap
-    version: 1.2.3
-    condition: global.installOpenLdap
-  - name: spinnaker
-    version: 2.2.3
-    condition: installSpinnaker
+  - name: dex
+    version: 0.15.3
+    condition: ssdgate.installDex
   - name: minio
-    version: 8.0.9
-    condition: global.minio.enabled
+    version: 16.0.10
+    condition: minio.enabled
   - name: redis
-    version: 10.5.3
+    version: 21.1.11
     condition: installRedis
-  - name: elasticsearch
-    version: 7.5.0
-    condition: enableCentralLogging
-  - name: kibana
-    version: 7.5.0
-    condition: enableCentralLogging
-  - name: fluent-bit
-    version: 2.8.2
-    condition: enableCentralLogging
-  - name: prometheus
-    version: 11.16.2
-    condition: global.enableCentralMonitoring
-  - name: grafana
-    version: 6.31.0
-    condition: global.enableCentralMonitoring  
-  - name: gitea
-    version: 5.0.1
-    condition: global.gitea.enabled
+  - name: temporal
+    version: 0.63.0
+    condition: temporal.enabled
+

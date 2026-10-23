@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: nginx
+  name: ssd-ingress
+  namespace: argocd-ssd                            # Change this
+spec:
+  rules:
+  - host: <your host-name, e.g. ssd.opsmx.com>     # Change this
+    http:
+      paths:
+      - backend:
+          service:
+            name: oes-ui
+            port:
+              number: 8080
+        path: /
+        pathType: ImplementationSpecific

@@ -1,0 +1,774 @@
+browserCacheDuration: {{ .Values.supplychainapi.browserCacheDuration }}
+cachePollingInterval: {{ .Values.supplychainapi.cachePollingInterval }}
+jiraPollingInterval: 5
+reportHourAndMinute: {{ .Values.supplychainapi.reportHourAndMinute }}
+vulnerabilityBatchSize: {{ .Values.supplychainapi.vulnerabilityBatchSize }}
+ossBatchSize: {{ .Values.supplychainapi.ossBatchSize }}
+deploymentBatchSize: {{ .Values.supplychainapi.deploymentBatchSize }}
+artifactBatchSize: {{ .Values.supplychainapi.artifactBatchSize }}
+alertsBatchSize: {{ .Values.supplychainapi.alertsBatchSize }}
+integrationData:
+  - stage: Source
+    integrations:
+      - integratorType: gitlab
+        category: sourcetool
+        multiaccount: false
+        integratorConfigs:
+          url:
+            encrypt: false
+          token:
+            encrypt: true
+      - integratorType: gitlab-server
+        category: sourcetool
+        multiaccount: false
+        integratorConfigs:
+          url:
+            encrypt: false
+          token:
+            encrypt: true
+      - integratorType: github
+        category: sourcetool
+        multiaccount: false
+        integratorConfigs:
+          url:
+            encrypt: false
+          token:
+            encrypt: true
+          installationId:
+            encrypt: false
+        featureConfigs:
+          authType:
+            default: token
+      - integratorType: huggingface
+        category: sourcetool
+        multiaccount: false
+        integratorConfigs:
+          url:
+            encrypt: false
+          token:
+            encrypt: true
+      - integratorType: bitbucket
+        category: sourcetool
+        multiaccount: false
+        integratorConfigs:
+          url:
+            encrypt: false
+          token:
+            encrypt: true
+          username:
+            encrypt: false
+          password:
+            encrypt: true
+          workspaceId:
+            encrypt: false
+          projectKey:
+            encrypt: false
+          repository:
+            encrypt: false
+        featureConfigs:
+          bitbucketAuthMode:
+            default: bearer
+          accessLevel:
+            default: Workspace
+      - integratorType: bitbucket-server
+        category: sourcetool
+        multiaccount: false
+        integratorConfigs:
+          url:
+            encrypt: false
+          token:
+            encrypt: true
+          username:
+            encrypt: false
+          password:
+            encrypt: true
+          projectKey:
+            encrypt: false
+          repository:
+            encrypt: false
+        featureConfigs:
+          bitbucketAuthMode:
+            default: bearer
+          accessLevel:
+            default: Project
+      - integratorType: azure
+        category: sourcetool
+        multiaccount: false
+        integratorConfigs:
+          organisation:
+            encrypt: false
+          project:
+            encrypt: false
+          token:
+            encrypt: true
+        featureConfigs:
+          accessLevel:
+            default: Project
+      - integratorType: azure-server
+        category: sourcetool
+        multiaccount: false
+        integratorConfigs:
+          url:
+            encrypt: false
+          collectionName:
+            encrypt: false
+          project:
+            encrypt: false
+          username:
+            encrypt: false
+          password:
+            encrypt: true
+          token:
+            encrypt: true
+        featureConfigs:
+          authMode:
+            default: token
+          accessLevel:
+            default: Project
+      - integratorType: sonarqube
+        category: scanningtool
+        multiaccount: false
+        integratorConfigs:
+          url:
+            encrypt: false
+          token:
+            encrypt: true
+        featureConfigs:
+          sonarqubeFileInsertion:
+            default: inactive
+      - integratorType: cbomkit
+        category: sourcetool
+        multiaccount: false
+        integratorConfigs:
+          url:
+            encrypt: false
+        featureConfigs:
+          cbomScan:
+            default: active
+          mode:
+            default: local
+      - integratorType: openssf
+        category: scanningtool
+        multiaccount: false
+        featureConfigs:
+          openssfcompliancescan:
+            default: active
+      - integratorType: virustotal
+        category: sourcetool
+        multiaccount: false
+        integratorConfigs:
+          token:
+            encrypt: true
+        featureConfigs:
+          urlScan:
+            default: inactive
+          malwareDetection:
+            default: inactive
+      - integratorType: snyk
+        category: sourcetool
+        multiaccount: false
+        integratorConfigs:
+          snykOrgId:
+            encrypt: false
+          token:
+            encrypt: true
+          url:
+            encrypt: false
+        featureConfigs:
+          sastsnykscan:
+            default: Local Mode
+          cimonitoring:
+            default: inactive
+          helmscan:
+            default: inactive
+      - integratorType: semgrep
+        category: sourcetool
+        multiaccount: false
+        integratorConfigs:
+          token:
+            encrypt: true
+        featureConfigs:
+          sastsemgrepscan:
+            default: Local Mode
+      - integratorType: opengrep
+        category: sourcetool
+        multiaccount: false
+        featureConfigs:
+          sastopengrepscan:
+            default: active
+      - integratorType: aibom
+        category: sourcetool
+        multiaccount: false
+        featureConfigs:
+          aibomScan:
+            default: inactive
+      - integratorType: codacy
+        category: sourcetool
+        multiaccount: false
+        integratorConfigs:
+          token:
+            encrypt: true
+        featureConfigs:
+          sastcodacyscan:
+            default: Local Mode
+      - integratorType: helmchart
+        category: sourcetool
+        multiaccount: false
+        integratorConfigs:
+          name:
+            encrypt: false
+          url:
+            encrypt: false
+          username:
+            encrypt: false
+          password:
+            encrypt: true
+        featureConfigs:
+          isprivate:
+            default: false
+  - stage: Build
+    integrations:
+      - integratorType: jenkins
+        category: citool
+        multiaccount: true
+        integratorConfigs:
+          url:
+            encrypt: false
+          approved_user:
+            encrypt: false
+          username:
+            encrypt: false
+          password:
+            encrypt: true
+  - stage: Artifact
+    integrations:
+      - integratorType: trivy
+        category: scanningtool
+        multiaccount: false
+        featureConfigs:
+          vulnerabilityscan:
+            default: inactive
+          helmscan:
+            default: active
+          secretscanforsource:
+            default: active
+          secretscanforcontainers:
+            default: active
+          licensescanforsource:
+            default: active
+          licensescanforcontainers:
+            default: active
+      - integratorType: docker
+        category: dockerregistry
+        multiaccount: true
+        integratorConfigs:
+          url:
+            encrypt: false
+          repo:
+            encrypt: false
+          username:
+            encrypt: false
+          password:
+            encrypt: true
+      - integratorType: gitlab-registry
+        category: dockerregistry
+        multiaccount: true
+        featureConfigs:
+          authMode:
+            default: token
+        integratorConfigs:
+          url:
+            encrypt: false
+          username:
+            encrypt: false
+          password:
+            encrypt: true
+          token:
+            encrypt: true
+      - integratorType: nexus-registry
+        category: dockerregistry
+        multiaccount: true
+        featureConfigs:
+          authMode:
+            default: password
+        integratorConfigs:
+          url:
+            encrypt: false
+          username:
+            encrypt: false
+          password:
+            encrypt: true
+          token:
+            encrypt: true
+      - integratorType: nexus
+        category: dockerregistry
+        multiaccount: true
+        featureConfigs:
+          authMode:
+            default: password
+        integratorConfigs:
+          url:
+            encrypt: false
+          username:
+            encrypt: false
+          password:
+            encrypt: true
+          token:
+            encrypt: true
+      - integratorType: acr
+        category: dockerregistry
+        multiaccount: true
+        integratorConfigs:
+          url:
+            encrypt: false
+          repo:
+            encrypt: false
+          username:
+            encrypt: false
+          password:
+            encrypt: true
+      - integratorType: gcr
+        category: dockerregistry
+        multiaccount: false
+        featureConfigs:
+          authMode:
+            default: serviceAccount
+        integratorConfigs:
+          url:
+            encrypt: false
+          repo:
+            encrypt: false
+          region:
+            encrypt: false
+          fileName:
+            encrypt: false
+          fileData:
+            encrypt: true
+      - integratorType: gcs
+        category: dockerregistry
+        multiaccount: false
+        integratorConfigs:
+          repo:
+            encrypt: false
+          fileName:
+            encrypt: false
+          region:
+            encrypt: false
+          fileData:
+            encrypt: true
+      - integratorType: gar
+        category: dockerregistry
+        multiaccount: false
+        featureConfigs:
+          authMode:
+            default: serviceAccount
+        integratorConfigs:
+          url:
+            encrypt: false
+          repo:
+            encrypt: false
+          region:
+            encrypt: false
+          fileName:
+            encrypt: false
+          fileData:
+            encrypt: true
+      - integratorType: ecr
+        category: dockerregistry
+        multiaccount: true
+        integratorConfigs:
+          url:
+            encrypt: false
+          repo:
+            encrypt: false
+          region:
+            encrypt: false
+          awsAccessKey:
+            encrypt: true
+          awsSecretKey:
+            encrypt: true
+      - integratorType: quay
+        category: dockerregistry
+        multiaccount: true
+        integratorConfigs:
+          url:
+            encrypt: false
+          repo:
+            encrypt: false
+          token:
+            encrypt: true
+      - integratorType: jfrog
+        category: dockerregistry
+        multiaccount: true
+        integratorConfigs:
+          url:
+            encrypt: false
+          repo:
+            encrypt: false
+          username:
+            encrypt: false
+          password:
+            encrypt: true
+      - integratorType: jfrogartifactory
+        category: dockerregistry
+        multiaccount: true
+        integratorConfigs:
+          url:
+            encrypt: false
+          username:
+            encrypt: false
+          token:
+            encrypt: true
+      - integratorType: jfrogxray
+        category: getsbom
+        multiaccount: true
+        integratorConfigs:
+          url:
+            encrypt: false
+          username:
+            encrypt: false
+          password:
+            encrypt: true
+      - integratorType: google-artifact-registry
+        category: aptregistry
+        multiaccount: false
+        integratorConfigs:
+          key:
+            encrypt: true
+          source:
+            encrypt: false
+      - integratorType: grype
+        category: scanningtool
+        multiaccount: false
+        featureConfigs:
+          vulnerabilityscan:
+            default: inactive
+      - integratorType: syft
+        category: scanningtool
+        multiaccount: false
+        featureConfigs:
+          vulnerabilityscan:
+            default: active
+      - integratorType: cdxgen
+        category: scanningtool
+        multiaccount: false
+        featureConfigs:
+          vulnerabilityscan:
+            default: inactive
+      - integratorType: checkmarx
+        category: scanningtool
+        multiaccount: false
+        integratorConfigs:
+          url:
+            encrypt: false
+          tenantAccountName:
+            encrypt: false
+          clientId:
+            encrypt: false
+          clientSecret:
+            encrypt: true
+      - integratorType: s3
+        category: dockerregistry
+        multiaccount: false
+        integratorConfigs:
+          awsAccessKey:
+            encrypt: true
+          awsSecretKey:
+            encrypt: true
+      - integratorType: sysdig
+        category: scanningtool
+        multiaccount: false
+        integratorConfigs:
+          url:
+            encrypt: false
+          token:
+            encrypt: true
+      - integratorType: dependencytracker
+        category: getsbom
+        multiaccount: false
+        integratorConfigs:
+          url:
+            encrypt: true
+          token:
+            encrypt: true
+  - stage: Others
+    integrations:
+      - integratorType: chatgpt
+        category: communications
+        multiaccount: false
+        integratorConfigs:
+          token:
+            encrypt: true
+      - integratorType: slack
+        category: communications
+        multiaccount: false
+        featureConfigs:
+          slackTriggerType:
+            default: critical
+          autoTriggerSlack:
+            default: inactive
+          customAlerts:
+            default: inactive
+          slackAuditNotification:
+            default: inactive
+          scanAlert:
+            default: inactive
+        integratorConfigs:
+          channel:
+            encrypt: false
+          token:
+            encrypt: true
+          alertStructure:
+            encrypt: false
+          scanAlertChannel:
+            encrypt: false
+      - integratorType: email
+        category: communications
+        multiaccount: false
+        featureConfigs:
+          authMode:
+            default: password
+          scanCompletionAlert:
+            default: inactive
+          emailAuditNotification:
+            default: inactive
+          scanFailureAlert:
+            default: inactive
+        integratorConfigs:
+          url:
+            encrypt: false
+          fromEmail:
+            encrypt: false
+          toEmail:
+            encrypt: false
+          password:
+            encrypt: true
+          token:
+            encrypt: true
+          tenantId:
+            encrypt: false
+          clientId:
+            encrypt: false
+          clientSecret:
+            encrypt: true
+      - integratorType: jira
+        category: communications
+        multiaccount: false
+        integratorConfigs:
+          projectKey:
+            encrypt: false
+          username:
+            encrypt: false
+          url:
+            encrypt: false
+          token:
+            encrypt: true
+          field:
+            encrypt: false
+          value:
+            encrypt: false
+          assignee:
+            encrypt: false
+          component:
+            encrypt: false
+          assignJiraToOwner:
+            encrypt: false
+          todo:
+            encrypt: false
+          inprogress:
+            encrypt: false
+          done:
+            encrypt: false
+          wontdo:
+            encrypt: false
+          autoTriggerJira:
+            encrypt: false
+          grouped:
+            encrypt: false
+        featureConfigs:
+          mode:
+            default: cloud
+          jiraTicketTriggerType:
+            default: deduplications
+          jiraTicketCreationScope:
+            default: vulnerability_policies
+      - integratorType: custompolicy
+        category: managementtool
+        multiaccount: false
+        integratorConfigs:
+          url:
+            encrypt: false
+          token:
+            encrypt: true
+      - integratorType: mobsf
+        category: scanningtool
+        multiaccount: false
+        featureConfigs:
+          staticScan:
+            default: inactive
+          dynamicScan:
+            default: inactive
+      - integratorType: jiraxray
+        category: scanningtool
+        multiaccount: false
+        integratorConfigs:
+          clientId:
+            encrypt: false
+          clientSecret:
+            encrypt: true
+          region:
+            encrypt: false
+        featureConfigs:
+          mode:
+            default: cloud
+      - integratorType: apirunner
+        category: testingtool
+        multiaccount: false
+        integratorConfigs:
+          http:
+            encrypt: false
+          url:
+            encrypt: false
+          username:
+            encrypt: false
+          password:
+            encrypt: true
+          token:
+            encrypt: true
+          param:
+            encrypt: false
+          header:
+            encrypt: false
+          variable:
+            encrypt: false
+          tool:
+            encrypt: false
+          body:
+            encrypt: false
+          fileformat:
+            encrypt: false
+        featureConfigs:
+          http:
+            default: get
+          authMode:
+            default: bearer
+      - integratorType: tfsec
+        category: communications
+        multiaccount: false
+        featureConfigs:
+          iactfsecscan:
+            default: Project Mode
+        integratorConfigs:
+          name:
+            encrypt: false
+          url:
+            encrypt: false
+          token:
+            encrypt: true
+          branch:
+            encrypt: false
+          scriptabsolutepath:
+            encrypt: false
+          application:
+            encrypt: false
+  - stage: Post Deploy
+    integrations:
+      - integratorType: zap
+        category: scanningtool
+        multiaccount: true
+        featureConfigs:
+          zapIntegrationType:
+            default: zapDastScan
+          openApiAuthType:
+          openApiAuthHttpScheme:
+          openApiAuthApikeyIn:
+          isAuthenticated:
+            default: inactive
+          successCondition:
+            default: urlcontains
+        integratorConfigs:
+          postmanCollectionFile:
+            encrypt: false
+          postmanCollectionVariables:
+            encrypt: false
+          serviceUrl:
+            encrypt: false
+          scanPolicy:
+            encrypt: false
+          username:
+            encrypt: false
+          password:
+            encrypt: true
+          retries:
+            encrypt: false
+          threshold:
+            encrypt: false
+          delay:
+            encrypt: false
+          account:
+            encrypt: false
+          appName:
+            encrypt: false
+          serviceName:
+            encrypt: false
+          excludeUrls:
+            encrypt: false
+          loginUrl:
+            encrypt: false
+          usernameField:
+            encrypt: false
+          passwordField:
+            encrypt: false
+          loginIndicator:
+            encrypt: false
+          logoutIndicator:
+            encrypt: false
+          openApiSpecUrl:
+            encrypt: false
+          openApiAuthHttpBearerToken:
+            encrypt: true
+          openApiAuthHttpBasicUsername:
+            encrypt: false
+          openApiAuthHttpBasicPassword:
+            encrypt: true
+          openApiAuthApikeyName:
+            encrypt: false
+          openApiAuthApikey:
+            encrypt: true
+          successConditionValue:
+            encrypt: false
+  - stage: Cloud Security Provider
+    integrations:
+      - integratorType: aws
+        category: cloudsecuritytool
+        multiaccount: true
+        integratorConfigs:
+          awsAccessKey:
+            encrypt: true
+          awsSecretKey:
+            encrypt: true
+  - stage: Cloud Security Posture Management
+    integrations:
+      - integratorType: scoutsuite
+        category: scanningtool
+        multiaccount: false
+        featureConfigs:
+          cspmscan:
+            default: inactive
+  - stage: Configuration Management Database
+    integrations:
+      - integratorType: servicenow
+        category: databasemanagement
+        multiaccount: false
+        integratorConfigs:
+          url:
+            encrypt: false
+          token:
+            encrypt: true
+          username:
+            encrypt: false
+          password:
+            encrypt: true
+        featureConfigs:
+          authType:
+            default: basic

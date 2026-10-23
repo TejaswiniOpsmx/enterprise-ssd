@@ -1,0 +1,39 @@
+#####################################################
+# This file contains minimal configuration for using
+# SSD with SAML authentication e.g with Okta SAML 2.0
+#####################################################
+
+#k8sServiceType: LoadBalancer
+####################################################
+# Global variables can be accessed across all the charts including sub-charts
+global:
+  # If cert-manager is installed, TLS secrets will created automatically, as an 'Issuer' will be created
+  certManager:  # set to true if cert-manager is installed
+    installed: true
+  createIngress: true
+
+  oesUI: # URL used to access the application
+    protocol: https
+    host: poc-ssd.ryzon7-isd40.opsmx.org 
+
+###############################################################################
+ssdgate:
+  installDex: false
+  createGateDexSecret: false
+  auth_type: saml  # saml, dex-oidc and poclogin are other valid values
+  admin_groups:
+  - dev
+  saml:
+    metadata_url: https://dev-14704582.okta.com/app/exkdnjuo0wxJsOtua5d7/sso/saml/metadata
+    saml_initiated_login: true
+    sign_request: false # DEPENDS Default is false, make it match the SAML setting
+    # If using signed assertion, create saml-files secret as follows
+    # k create secret generic saml-files  --from-file certificate.crt --from-file private.key
+    session_crt_file: /app/saml/certificate.crt # OPTIONAL
+    session_key_file: /app/saml/private.key #  OPTIONAL
+    acs_endpoint: /saml/acs # default, If the Single Sign On Endpoint .e.g. /saml/SSO
+    entity_map: # OPTIONAL
+      user_name: email  # Default is to take from the "subject" of the assertion. Use this to get it from an attribute
+      roles: groups # memberOf is another common attribute
+      roles_delimiter: "," # Specify this ONLY if the SAML server sends comma-separated list of groups
+

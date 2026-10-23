@@ -1,0 +1,89 @@
+---
+# Source: SSD/templates/supplychain-api/ssd-supplychain-api-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: supplychain-api
+  labels:
+    app: oes
+    component: oes-supplychain-api
+    heritage: "Helm"
+    release: "ssd"
+    chart: "SSD-4.0.9"
+  name: supplychain-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: oes
+      component: oes-supplychain-api
+  template:
+    metadata:
+      labels:
+        app: oes
+        component: oes-supplychain-api
+        heritage: "Helm"
+        release: "ssd"
+        chart: "SSD-4.0.9"
+      annotations:
+        moniker.spinnaker.io/application: isd
+    spec:
+      volumes:
+        - name: supplychain-api-volume
+          secret:
+            secretName: supplychain-api
+            items:
+              - key: app-config.yaml
+                path: app-config.yaml
+            defaultMode: 420
+        - configMap:
+            defaultMode: 420
+            items:
+            - key: ssd-integrations.yaml
+              path: ssd-integrations.yaml
+            name: supplychain-api-cm
+          name: supplychain-api-cm
+        - name: ssdsecret
+          secret:
+            defaultMode: 420
+            items:
+            - key: AESEncryptionKey
+              path: ssdsecret/AESEncryptionKey
+            secretName: ssdsecret
+      containers:
+        - name: supplychain-api
+          image: opsmx11/supplychain-api:83dbb61-987
+          ports:
+            - containerPort: 8099
+              protocol: TCP
+          readinessProbe:
+            failureThreshold: 6
+            httpGet:
+              path: /healthz
+              port: 8099
+              scheme: HTTP
+            periodSeconds: 20
+            successThreshold: 1
+            timeoutSeconds: 1
+          volumeMounts:
+            - name: supplychain-api-volume
+              mountPath: /app/app-config.yaml
+              subPath: app-config.yaml
+            - mountPath: /app/ssd-integrations.yaml
+              name: supplychain-api-cm
+              subPath: ssd-integrations.yaml
+            - mountPath: /app/secrets/
+              name: ssdsecret
+              readOnly: true
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+      restartPolicy: Always

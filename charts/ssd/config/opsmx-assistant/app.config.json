@@ -1,0 +1,9 @@
+{
+  "API_BASE_URL": "/gate/",
+  "API_ENDPOINTS": {
+    "CHAT_NATURAL_LANGUAGE": "ssdservice/v1/nli",
+    "GET_NLI_CHAT_HISTORY": "ssdservice/v1/nli/chats/user/",
+    "GET_NLI_CHAT_MESSAGES": "ssdservice/v1/nli/chat/"
+  },
+  "HUBS_TEMP_USE_DEFAULT": true
+}

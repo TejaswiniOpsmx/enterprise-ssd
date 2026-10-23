@@ -1,0 +1,16 @@
+server:
+  port: 8080
+ssd:
+  gateUrl: http://ssd-gate:8084
+  # apiKey intentionally omitted — clients must send X-OpsMx-ApiKey or X-OpsMx-Auth.
+  # To use static-key auth instead, uncomment the line below and the
+  # SSD_API_KEY env block in ssd-api-mcp-deployment.yaml.
+  # authMode: static
+graphql:
+{{- if .Values.dgraph.HA.enabled }}
+  endpoint: http://dgraph-alpha-public:8080/graphql
+{{- else }}
+  endpoint: http://dgraph-public:8080/graphql
+{{- end }}
+toolchain:
+  baseUrl: http://tool-chain:8100

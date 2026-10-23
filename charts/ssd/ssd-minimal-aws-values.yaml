@@ -1,0 +1,82 @@
+##############################################################################################################################################
+################ This file is used to Install SSD with AWS Ingress Controller and Login with Inbuilt Authentication ########################################################################################################################################################################
+# Global variables can be accessed across all the charts including sub-charts
+global:
+  # If set to false AWS Cert Manager(ACM) will be used and annotations will be passed in below annotations
+  certManager:
+    installed: false
+  createIngress: true
+
+  ssdUI: # URL used to access the application
+    # Change to http if global.certManager.installed is false
+    protocol: https
+    ## Update the host value with proper dns entry to access the SSD UI
+    host: SSD.REPLACE.THIS.WITH.YOURCOMPANY.COM
+    pathType: Prefix
+    ingress:
+      annotations:
+        kubernetes.io/ingress.class: alb
+        alb.ingress.kubernetes.io/scheme: internet-facing
+        #alb.ingress.kubernetes.io/scheme: internal
+        #alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-2016-08
+        #alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-west-2:xxxxx:certificate/<cert>
+        #alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-west-2:xxxxx:certificate/cert1,
+        #arn:aws:acm:us-west-2:xxxxx:certificate/cert2,arn:aws:acm:us-west-2:xxxxx:certificate/cert3
+        alb.ingress.kubernetes.io/target-type: instance
+        alb.ingress.kubernetes.io/backend-protocol: HTTP
+        alb.ingress.kubernetes.io/healthcheck-protocol: HTTP
+        alb.ingress.kubernetes.io/healthcheck-path: /static/underconstruction.html
+        alb.ingress.kubernetes.io/healthcheck-port: 'traffic-port'
+        alb.ingress.kubernetes.io/healthcheck-interval-seconds: '35'
+        alb.ingress.kubernetes.io/healthcheck-timeout-seconds: '30'
+        alb.ingress.kubernetes.io/healthy-threshold-count: '2'
+        alb.ingress.kubernetes.io/unhealthy-threshold-count: '4'
+        alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+        alb.ingress.kubernetes.io/actions.ssl-redirect: '{"Type": "redirect", "RedirectConfig": { "Protocol": "HTTPS", "Port": "443", "StatusCode": "HTTP_301"}}'
+
+#################################################################################
+rabbitmq:
+  serviceAnnotations:
+    service.beta.kubernetes.io/aws-load-balancer-additional-resource-tags: Name=rabbitmq,NLBType=public
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-port: traffic-port
+    service.beta.kubernetes.io/aws-load-balancer-ip-address-type: ipv4
+    service.beta.kubernetes.io/aws-load-balancer-name: rabbitmq
+    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: instance
+    service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
+    #service.beta.kubernetes.io/aws-load-balancer-scheme: internal
+    service.beta.kubernetes.io/aws-load-balancer-type: nlb
+
+#############################################################################
+### Change the Organisation name if user wants a different name in the UI
+organisationname: opsmx
+
+###############################################################################
+#####User doesn't need to change the below flags let it be the default one######################
+ssdgate:
+  installDex: false   # Default will be false, Set to true if dex need to be installed
+  auth_type: poclogin  # saml, dex-oidc and poclogin are other valid values
+  admin_groups:
+  - admin
+  saml:
+    saml_initiated_login: false
+
+# Type of Service for SSD UI, can be changed to NodePort
+UIServiceType: NodePort
+
+# Type for the Rabbit MQ, default is LB, can be changed to ClusterIP,NodePort
+RabbitServiceType: LoadBalancer
+
+#### Storage Class for the Minio ############################################
+minio:
+  persistence:
+    storageClass: "gp2"
+    size: 20Gi
+
+### Storage Class for the Redis ##############################################
+redis:
+  master:
+    persistence:
+      storageClass: "gp2"
+
+###### Below parameter is used for StorageClass for SSD-DB,Tool Chain and Dgraph #####
+storageClass: gp2

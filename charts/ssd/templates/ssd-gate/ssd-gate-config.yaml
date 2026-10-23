@@ -1,0 +1,16 @@
+apiVersion: v1
+data:
+  ssd-gate-config.yaml: |
+{{- if eq .Values.global.ssdUI.host "localhost" }}
+    {{- tpl (.Files.Get "config/ssd-gate/config-local.yaml") . | nindent 4 }}
+{{- else }}
+    {{- tpl (.Files.Get "config/ssd-gate/gate-multi-auth.yaml") . | nindent 4 }}
+{{- end }}
+kind: ConfigMap
+metadata:
+  name: ssd-gate-config
+  labels:
+    app: ssd
+    component: gate
+{{ include "ssd.standard-labels" . | indent 4 }}
+

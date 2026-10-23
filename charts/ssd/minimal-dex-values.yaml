@@ -1,0 +1,146 @@
+#####################################################
+# This is a minimal configuration needed for SSD Installation
+# Using Dex authentication. 
+#####################################################
+
+global:
+  certManager:
+    installed: true
+  createIngress: true
+  ssdUI:
+    protocol: https
+    ingressClass: nginx
+    host: SSD.REPLACE.THIS.WITH.YOURCOMPANY.COM
+    ingress:
+      annotations:
+        nginx.ingress.kubernetes.io/client-header-buffer-size: 100m
+        nginx.ingress.kubernetes.io/proxy-body-size: 500m
+        nginx.ingress.kubernetes.io/proxy-connect-timeout: "18000"
+        nginx.ingress.kubernetes.io/proxy-read-timeout: "18000"
+        nginx.ingress.kubernetes.io/proxy-send-timeout: "18000"
+
+#############################################################################
+### Change the Organisation name if user wants a different name in the UI
+organisationname: opsmx
+
+### Admin groups in SSD for Rbac #############################################
+admingroups: admin
+
+############ Update the Prometheus Ingress Url ###############################
+prometheusUrl: Promethues.ingress.url.com
+##############################################################################
+### Update the below parameters only if global.minio.enabled is false ########
+### Update the S3 Bucket REGION in AWS #######################################
+s3region: UPDATE.S3BUCKETREGION
+s3bucketurl: https://S3BUCKETNAME.s3.S3BUCKETREGION.amazonaws.com
+#######################################################################################################################
+#### Update the below paramerts only if the user want the Migrate the Existing Data to HA Setup for DGraph ############
+#######################################################################################################################
+dgraph:
+  storageMountSize: 5Gi
+  HA:
+    enabled: false
+    replicas: 3
+    migrateolddata: true
+    ### Update the S3 Bucket Name where the existing Dgraph Data is stored  #########################################
+    s3bucketurl: s3:///S3BUCKETNAME/DGRAPHFOLDER
+    saAnnotations: {}
+
+###################################################################################################
+toolchain:
+  ### Change to true if user wants IAM role to use the Kubernetes service accounts to Access S3 Buckets ##################
+  iamrole: false
+  ### Update the Annotations so IAM role uses the Kubernetes service accounts to Access S3 Buckets ##################
+  saAnnotations: {}
+  #  eks.amazonaws.com/role-arn: arn:aws:iam::111122223333:role/<iam role name>
+################################################################################################
+## Change this true if user need to enable the AIModel Scan ####################################
+## If true AI Shield and DLVS Services will be installed #######################################
+installAimlSvcs: false
+################################################################################################
+#####User doesn't need to change the below flags let it be the default one######################
+storageClass:
+
+#### Change to false if user want to Use AWS S3 bucket to store the scan data ##################
+minio:
+  enabled: true
+  persistence:
+    storageClass: ""
+    size: 10Gi
+
+RabbitServiceType: ClusterIP
+###############################################################################
+ssdgate:
+  installDex: true
+  createGateDexSecret: true
+  auth_type: dex_oidc
+  display_name: Sign In Dex
+  admin_groups:
+  - admin
+  - admin@example.com
+  auth2_oidc:
+    connectors:
+    #- type: saml
+    #  id: okta
+    #  name: Okta
+    #  config:
+    #    # Single Sign Ok URL - in Okta get it after completing the configuration, "view SAML setup instructions"
+    #    ssoURL: https://xxxxxxxx/app/xxxxxxxx/xxxxxxxxx/sso/saml
+    #    # Download this from "Sign on" tab (next to general), "SAML Signing Certificates", Actions->Download
+    #    ca: /etc/dex/okta.crt
+    #    redirectURI: https://SSD.REPLACE.THIS.WITH.YOURCOMPANY.COM/dex/callback
+    #    usernameAttr: email
+    #    emailAttr: email
+    #    groupsAttr: groups
+    #- type: ldap
+    #  name: OpsmxLDAP
+    #  id: ad
+    #  config:
+    #    host: 10.155.4.95:389
+    #    insecureNoSSL: true
+    #    insecureSkipVerify: true
+    #    # Variable name stores ldap bindDN, bindPW in argocd-secret
+    #    bindDN: "$dex.ldap.bindDN"
+    #    bindPW: "$dex.ldap.bindPW"
+    #    usernamePrompt: Username
+    #    userSearch:
+    #      baseDN: DC=Userx,DC=opsmx,DC=com,DC=vn
+    #      filter: ""
+    #      username: sAMAccountName
+    #      idAttr: sAMAccountName
+    #      emailAttr: sAMAccountName
+    #      nameAttr: sAMAccountName
+    #    groupSearch:
+    #      baseDN: DC=Userx,DC=opsmx,DC=com,DC=vn
+    #      filter: ""
+    #      userAttr: distinguishedName
+    #      groupAttr: memberOf
+    #      nameAttr: name
+    - type: saml
+      id: Google
+      name: Google-Saml
+      config:
+    #    # After the Application creation in Google Workspace Click on "DOWNLOAD METADATA", Copy the  SSO URL
+        ssoURL: https://accounts.google.com/x/xxxxx/xxx?xxxx=xxxxxx
+    #    # Download this from "Sign on" tab (next to general), "SAML Signing Certificates", Actions->Download
+    #    # kubectl create secret generic dex-okta-pem --from-file=google.pem -n NAMESPACE
+        ca: /okta/google.pem
+        redirectURI: https://SSD.REPLACE.THIS.WITH.YOURCOMPANY.COM/dex/callback
+        entityIssuer: https://SSD.REPLACE.THIS.WITH.YOURCOMPANY.COM/dex/callback
+        usernameAttr: email
+        emailAttr: email
+        groupsAttr: groups
+    #- type: google
+    #  id: google
+    #  name: Google
+    #  config:
+    #    clientID: xxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com
+    #    clientSecret: XXXXXXXXXXXXXXXXXXXXX
+    #    redirectURI: https://SSD.REPLACE.THIS.WITH.YOURCOMPANY.COM/dex/callback
+    #    groups:
+    #      - admins@example.com
+    #    hostedDomains:
+    #      - example.com
+    #    serviceAccountFilePath: /google/googleAuth.json
+    #    domainToAdminEmail:
+    #       my-domain.com: super-user@my-domain.com

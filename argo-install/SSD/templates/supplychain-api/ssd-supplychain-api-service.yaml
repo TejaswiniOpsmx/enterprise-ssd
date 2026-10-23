@@ -1,0 +1,21 @@
+---
+# Source: SSD/templates/supplychain-api/ssd-supplychain-api-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: supplychain-api
+  labels:
+    app: oes
+    component: oes-supplychain-api
+    heritage: "Helm"
+    release: "ssd"
+    chart: "SSD-4.0.9"
+spec:
+  ports:
+    - name: supplychain-api
+      protocol: TCP
+      port: 8099
+      targetPort: 8099
+  selector:
+    app: oes
+    component: oes-supplychain-api

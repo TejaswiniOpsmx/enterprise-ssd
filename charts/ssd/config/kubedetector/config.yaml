@@ -1,0 +1,6 @@
+token: "xxxx"
+namespacesToAllow:
+{{- range .Values.kubedetector.namespaces }}
+- {{ . }}
+{{ end }}
+-

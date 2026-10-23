@@ -1,0 +1,6 @@
+{{- if .Values.global.gkeworkload }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ssd-workload-sa
+{{- end }}

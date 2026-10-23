@@ -1,0 +1,13 @@
+{{- if .Values.ssdgate.installDex }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: gate-dex-config
+  labels:
+    app: ssd
+    component: gate
+{{ include "ssd.standard-labels" . | indent 4 }}
+stringData:
+  config.yaml: |
+    {{- tpl (.Files.Get "config/dex/config.yaml") . | nindent 4 }}
+{{- end }}

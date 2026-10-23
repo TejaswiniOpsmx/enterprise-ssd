@@ -1,0 +1,96 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mobsf
+  labels:
+    app: ssd
+    component: mobsf
+{{ include "ssd.standard-labels" . | indent 4 }}
+spec:
+  replicas: {{ .Values.mobsf.replicaCount }}
+  selector:
+    matchLabels:
+      app: ssd
+      component: mobsf
+  template:
+    metadata:
+      labels:
+        app: ssd
+        component: mobsf
+{{ include "ssd.standard-labels" . | indent 8 }}
+      annotations:
+{{- if .Values.mobsf.annotations -}}
+        {{ toYaml .Values.mobsf.annotations | nindent 8 }}
+{{- end }}
+    spec:
+      containers:
+        - name: mobsf
+          image: {{ template "mobsf.image" . }}
+          env:
+          - name: MOBSF_API_KEY
+            valueFrom:
+              secretKeyRef:
+                key: mobsfapikey
+                name: mobsf-secret
+          ports:
+            - containerPort: 8000
+      {{- with .Values.mobsf.probes }}
+      {{- toYaml . | nindent 10 }}
+      {{- else }}
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 150
+            periodSeconds: 10
+            successThreshold: 1
+            tcpSocket:
+              port: 8000
+            timeoutSeconds: 1
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 150
+            periodSeconds: 10
+            successThreshold: 1
+            tcpSocket:
+              port: 8000
+            timeoutSeconds: 1
+      {{- end }}
+      {{- with .Values.mobsf.resources }}
+          resources:
+      {{- toYaml . | nindent 12 }}
+      {{- end }}
+          securityContext:
+      {{- if .Values.mobsf.securityContext }}
+      {{- toYaml .Values.mobsf.securityContext | nindent 12 }}
+      {{- else }}
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: false
+            runAsNonRoot: false
+            runAsUser: 0
+            runAsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+      {{- end }}
+      {{- if .Values.imagePullSecret }}
+      imagePullSecrets:
+      - name: {{ .Values.imagePullSecret }}
+      {{- end }}
+      restartPolicy: Always
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+      {{- toYaml . | nindent 8 }}
+      {{- end }}

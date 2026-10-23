@@ -1,0 +1,47 @@
+---
+# Source: SSD/templates/dgraph/dgraph-schema-job.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+  name: dgraph-schema-update
+spec:
+  template:
+    spec:
+      containers:
+      #- command: ["sleep", "3600"]
+      - command: ["/bin/sh", "-c"]
+        args:
+        - |
+          cd /tmp
+          server_endpoint=http://dgraph-public:8080/admin/schema
+          echo "executing updating dgraphs schema at $server_endpoint"
+          counter=1
+          while [ $counter -le 5 ]; do
+              echo "Iteration $counter"
+              RESP=`curl -X POST -H "Content-Type: application/json" --data-binary "$(cat schema.graphql)" $server_endpoint |  grep Success`
+              if [ -z $RESP  ]; then
+                counter=$((counter + 1))
+                echo "Sleeping for 30 sec...:$RESP"
+                sleep 30 
+              else
+                echo "Update Response:$RESP"
+                break
+              fi
+          done
+          if [ $counter -gt 5 ]; then
+              echo "Loop finished...but could not succeed"
+          else
+              echo "Successfully updated the schema"
+          fi
+        image: curlimages/curl:latest
+        imagePullPolicy: IfNotPresent
+        name: schema-update
+        volumeMounts:
+        - mountPath: /tmp
+          name: dgraph-schema
+      restartPolicy: OnFailure
+      volumes:
+      - name: dgraph-schema
+        configMap:
+          name: schema-cm

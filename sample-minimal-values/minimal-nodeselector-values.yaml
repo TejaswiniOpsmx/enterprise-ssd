@@ -1,0 +1,32 @@
+#####################################################
+# This is a example configuration to show nodeSelectors
+# and other contraints
+#####################################################
+
+global:
+  createIngress: false
+  oesUI:
+    protocol: http
+    host: localhost
+    port: 8080
+
+# SSD Pods
+nodeSelector:
+  node-role.kubernetes.io/master: ""
+#tolerations: []
+#affinity: {}
+
+# Dex pod, if used
+dex:
+  nodeSelector:
+    node-role.kubernetes.io/master: ""
+# Minio Pod, if used
+minio:
+  nodeSelector:
+    node-role.kubernetes.io/master: ""
+###############################################################################
+ssdgate:
+  installDex: true
+  createGateDexSecret: false
+  auth_type: poclogin
+

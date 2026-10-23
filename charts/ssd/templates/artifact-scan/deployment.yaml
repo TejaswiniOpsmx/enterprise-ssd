@@ -1,0 +1,173 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: artifact-scan
+  labels:
+    app: ssd
+    component: artifact-scan
+{{ include "ssd.standard-labels" . | indent 4 }}
+spec:
+  replicas: {{ .Values.artifactscan.replicaCount }}
+  selector:
+    matchLabels:
+      app: ssd
+      component: artifact-scan
+  template:
+    metadata:
+      labels:
+        app: ssd
+        component: artifact-scan
+{{- if .Values.customLabels }}
+{{ toYaml .Values.customLabels | indent 8}}
+{{- end }}
+      annotations:
+        checksum/configmap: {{ include (print $.Template.BasePath "/artifact-scan/configmap.yaml") . | sha256sum }}
+{{- if .Values.artifactscan.annotations -}}
+        {{ toYaml .Values.artifactscan.annotations | nindent 8 }}
+{{- end }}
+    spec:
+      {{- if .Values.global.gkeworkload }}
+      serviceAccountName: ssd-workload-sa
+      {{- end }}
+      containers:
+        - name: artifact-scan
+          image: {{ template "artifactscan.image" . }}
+          env:
+          - name: RABBITMQ_HOST
+            value: rabbitmq-service
+          - name: RABBITMQ_PORT
+            value: "5672"
+          - name: RABBITMQ_USERNAME
+            valueFrom:
+              secretKeyRef:
+                key: username
+                name: rabbitmq-secret
+          - name: RABBITMQ_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                key: password
+                name: rabbitmq-secret
+          - name: REDIS_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: redis-secret
+                key: password
+          envFrom:
+            - configMapRef:
+                name: ssd-audit-emitter-config
+                optional: true
+          volumeMounts:
+            - name: ssd-public-keys
+              mountPath: /app/ssd-public-keys
+            - name: ssdsecret
+              readOnly: true
+              mountPath: /app/secrets/
+            - name: scanresult
+              mountPath: /app/scanResult
+            - name: artifact-scan
+              mountPath: /app/config/artifact-scan.yaml
+              subPath: artifact-scan.yaml
+            - name: custom-certs
+              mountPath: /usr/local/share/ca-certificates
+            - name: token
+              readOnly: true
+              mountPath: /app/secrets/artifact-scan-token
+            - name: tempdir
+              mountPath: /app/temp
+            - mountPath: /app/app-config.yaml
+              name: project-monitor-queue
+              subPath: app-config.yaml
+            - name: service-account
+              readOnly: true
+              mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          {{- with .Values.artifactscan.resources }}
+          resources:
+          {{ toYaml . | nindent 12 }}
+          {{- end }}
+          securityContext:
+      {{- if .Values.artifactscan.securityContext }}
+      {{ toYaml .Values.artifactscan.securityContext | nindent 12 }}
+      {{- end }}
+{{ include "otel.sidecar.container" . | indent 8 }}
+      volumes:
+        - name: ssdsecret
+          secret:
+            secretName: ssdsecret
+            items:
+              - key: AESEncryptionKey
+                path: ssdsecret/AESEncryptionKey
+            defaultMode: 420
+        - name: ssd-proxy-certs
+          configMap:
+            name: ssd-proxy-certs
+            defaultMode: 420
+            optional: true
+        - name: custom-certs
+          configMap:
+            name: customer-custon-ca
+            items:
+              - key: ca.crt
+                path: ca.crt
+            defaultMode: 420
+            optional: true
+        - name: ssd-public-keys
+          configMap:
+            name: ssd-public-keys
+            defaultMode: 420
+        - name: token
+          secret:
+            optional: true
+            secretName: artifact-scan-token
+        - name: scanresult
+          emptyDir: {}
+        - name: tempdir
+          emptyDir: {}
+        - name: logs
+          emptyDir: {}
+        - name: artifact-scan
+          configMap:
+            name: artifact-scan-config
+            items:
+              - key: artifact-scan.yaml
+                path: artifact-scan.yaml
+            defaultMode: 420
+        - name: project-monitor-queue
+          secret:
+            defaultMode: 420
+            items:
+            - key: app-config.yaml
+              path: app-config.yaml
+            secretName: project-monitor
+        - name: otel-sidecar-volume
+          configMap:
+            name: otel-sidecar-config
+            defaultMode: 420
+        - name: service-account
+          projected:
+            sources:
+              - serviceAccountToken:
+                  audience: ssdopsmxadmin
+                  expirationSeconds: 3600
+                  path: token
+            defaultMode: 420
+      {{- if .Values.imagePullSecret }}
+      imagePullSecrets:
+      - name: {{ .Values.imagePullSecret }}
+      {{- end }}
+      restartPolicy: Always
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

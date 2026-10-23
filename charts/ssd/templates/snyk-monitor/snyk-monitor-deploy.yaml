@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: snyk-monitor
+  labels:
+    app: ssd
+    component: snyk-monitor
+{{ include "ssd.standard-labels" . | indent 4 }}
+spec:
+  replicas: {{ .Values.snykmonitor.replicaCount }}
+  selector:
+    matchLabels:
+      app: ssd
+      component: snyk-monitor
+  template:
+    metadata:
+      labels:
+        app: ssd
+        component: snyk-monitor
+{{ include "ssd.standard-labels" . | indent 8 }}
+      annotations:
+        checksum/configmap: {{ include (print $.Template.BasePath "/snyk-monitor/snyk-monitor-cm.yaml") . | sha256sum }}
+{{- if .Values.snykmonitor.annotations -}}
+        {{ toYaml .Values.snykmonitor.annotations | nindent 8 }}
+{{- end }}
+    spec:
+      containers:
+{{ include "otel.sidecar.container" . | indent 8 }}
+        - name: snyk-monitor
+          image: {{ template "snykmonitor.image" . }}
+          volumeMounts:
+            - name: ssd-public-keys
+              mountPath: /etc/ssd-public-keys
+            - name: ssdsecret
+              readOnly: true
+              mountPath: /etc/secrets
+            - name: cli-config
+              mountPath: /etc/config
+            - name: snyk-monitor-secret
+              mountPath: /etc/secrets/dgraph-secret
+              readOnly: true
+      {{- with .Values.snykmonitor.resources }}
+          resources:
+      {{- toYaml . | nindent 12 }}
+      {{- end }}
+
+      {{- if .Values.snykmonitor.securityContext }}
+          securityContext:
+      {{ toYaml .Values.snykmonitor.securityContext | nindent 12 }}
+      {{- else }}
+          securityContext: {{ default "{}" }}
+      {{- end }}
+
+      {{- if .Values.imagePullSecret }}
+      imagePullSecrets:
+      - name: {{ .Values.imagePullSecret }}
+      {{- end }}
+      volumes:
+        - name: logs
+          emptyDir: {}
+        - configMap:
+            defaultMode: 420
+            name: otel-sidecar-config
+          name: otel-sidecar-volume
+        - name: ssd-public-keys
+          configMap:
+            name: ssd-public-keys
+            defaultMode: 420
+        - name: cli-config
+          configMap:
+            name: snyk-monitor-config
+            items:
+              - key: config.yaml
+                path: config.yaml
+            defaultMode: 420
+        - name: ssdsecret
+          secret:
+            secretName: ssdsecret
+            items:
+              - key: AESEncryptionKey
+                path: ssdsecret/AESEncryptionKey
+            defaultMode: 420
+        - name: snyk-monitor-secret
+          secret:
+            defaultMode: 420
+            secretName: snyk-monitor-secret
+      restartPolicy: Always
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+

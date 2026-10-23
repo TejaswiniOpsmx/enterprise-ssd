@@ -1,7 +1,976 @@
-type Image {
+type SchemaVersion {
+    version: String!
+}
+
+interface RBAC {
+    roles: [Role!]
+}
+
+enum RolePermission {
+    admin
+    "adhoc perms"
+    adhoc_create_delete
+    adhoc_update
+    adhoc_trigger_scan
+    "integrator perms"
+    integrator_create_delete
+    integrator_update
+    integrator_toggle
+    "policies perms"
+    policy_update
+    "exception perms"
+    exception_add
+    exception_update
+    "report subscription perms"
+    report_subscription_create_delete
+    report_subscription_update
+    "alerts perms"
+    alert_update
+    "cluster perms"
+    cluster_add
+    cluster_update
+    "component license perms"
+    component_license_update
+    "team perms"
+    team_manage
+    "read perms"
+    read
+}
+
+type Role {
+    "id is randomly assigned"
     id: String! @id
-    LastScannedAt: DateTime
-    components: [Component!] @hasInverse(field: images)
+    "group should be a URI format that includes a scope or realm"
+    group: String! @search(by: [hash])
+    permission: [RolePermission!] @search(by: [hash])
+}
+
+
+enum ApiKeyStatus {
+    active
+    inactive
+    expired
+}
+
+type ApiKey
+    @withSubscription
+    @auth(
+    query:
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+    add:
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+    update:
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+    delete:
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+    )
+{
+    id: String! @id
+    name: String! @search(by: [exact, regexp])
+    role: Role!
+    keyHash: String! @search(by: [hash])
+    createdAt: DateTime! @search
+    updatedAt: DateTime! @search
+    expiresAt: DateTime! @search
+    status: ApiKeyStatus! @search(by: [hash])
+}
+
+"""
+KeyValue is a generic key/value pair, used as an attribute list or similar.
+"""
+type KeyValue {
+    id: String! @id
+    name: String! @search(by: [exact, regexp])
+    value: String! @search(by: [exact, regexp])
+    createdAt: DateTime! @search
+}
+
+
+type Organization implements RBAC
+    @withSubscription
+    @auth(
+    query: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryOrganization @cascade { roles(filter: {group: {in: $groups}, permission: {in: [admin,integrator_create_delete,integrator_update,integrator_toggle,adhoc_create_delete,adhoc_update,adhoc_trigger_scan,exception_add,exception_update,cluster_add,cluster_update,component_license_update,team_manage,alert_update,policy_update,report_subscription_create_delete,report_subscription_update,read]}}) { __typename }}}"},
+{ rule: "query($groups: [String!]) { queryOrganization @cascade { teams { roles(filter: {group: {in: $groups}, permission: {in: [admin,integrator_create_delete,integrator_update,integrator_toggle,adhoc_create_delete,adhoc_update,adhoc_trigger_scan,exception_add,exception_update,cluster_add,cluster_update,component_license_update,team_manage,alert_update,policy_update,report_subscription_create_delete,report_subscription_update,read]}}) { __typename }}}}"},
+{ rule: "query($groups: [String!]) { queryOrganization @cascade { teams { applications { roles(filter: {group: {in: $groups}, permission: {in: [admin,integrator_create_delete,integrator_update,integrator_toggle,adhoc_create_delete,adhoc_update,adhoc_trigger_scan,exception_add,exception_update,cluster_add,cluster_update,component_license_update,team_manage,alert_update,policy_update,report_subscription_create_delete,report_subscription_update,read]}}) { __typename }}}}}"},
+    ]},
+    add: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryOrganization @cascade { roles(filter: {group: {in: $groups}, permission: {in: [admin]}}) { __typename }}}"},
+    ]},
+    update: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryOrganization @cascade { roles(filter: {group: {in: $groups}, permission: {in: [admin]}}) { __typename }}}"},
+    ]},
+    delete:
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+            )
+{
+    "id is randomly assigned"
+    id: String! @id
+    name: String! @search(by: [exact])
+    roles: [Role!]
+    teams: [Team!] @hasInverse(field: organization)
+    environments: [DeploymentTarget!] @hasInverse(field: organization)
+    policies: [PolicyDefinition!] @hasInverse(field: ownerOrg)
+    policyEnforcements: [PolicyEnforcement!]
+    integrators: [Integrator!] @hasInverse(field: organization)
+    integratorConfigs: [IntegratorConfigs!] @hasInverse(field: organization)
+    resources: [AbstractResource!] @hasInverse(field: organization)
+    projects: [Project!] @hasInverse(field: organization)
+    licenses: [ComponentLicenses!] @hasInverse(field: organization)
+    exceptions: [ExceptionAffects!] @hasInverse(field: affectsOrg)
+    reportSubscriptions: [ReportSubscriptionAffects!] @hasInverse(field: affectsOrg)
+}
+
+"""
+Environment can be things like dev, prod, staging etc.
+"""
+type Environment {
+    id: String! @id
+    organization: Organization!
+    purpose: String! @search(by: [exact,regexp])
+    integratorConfigs: [IntegratorConfigs!] @hasInverse(field: environment)
+}
+
+"""
+DeploymentTarget describes a single place that things can be deployed into,
+such as an AWS account or a Kubernetes cluster.
+"""
+type DeploymentTarget
+    @auth(
+    query: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryDeploymentTarget @cascade { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin,cluster_add,cluster_update,read]}}) { __typename }}}}"},
+{ rule: "query($groups: [String!]) { queryDeploymentTarget @cascade { organization { teams { roles(filter: {group: {in: $groups}, permission: {in: [admin,cluster_add,cluster_update,read]}}) { __typename }}}}}"},
+    ]},
+    add: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryDeploymentTarget @cascade { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin,cluster_add]}}) { __typename }}}}"},
+    ]},
+    update: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryDeploymentTarget @cascade { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin,cluster_add,cluster_update]}}) { __typename }}}}"},
+    ]},
+    delete:
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" }
+            )
+{
+   "id is randomly assigned"
+    id: String! @id
+    name: String! @search(by: [exact, regexp])
+    "this would be the ip/server address of the target environment"
+    ip: String! @search(by: [exact])
+    "expected value is kubernetes or non-kubernetes"
+    targetType: String @search(by: [exact])
+    "Options are: self-hosted(default), aws"
+    hosting: String @search(by: [exact])
+    "Options are: ecs,ec2,etc (Options should be based in the hosting type)"
+    hostingService: String @search(by: [exact])
+    "Account name from the cloud provider integrator is expected here"
+    account: String @search(by: [exact])
+    "this would be something like us-east-1 etc"
+    region: String @search(by: [exact])
+    kubescapeServiceConnected: String
+    kubescapeLatestFileTS: String
+    isFirewall: Boolean
+    organization: Organization! @hasInverse(field: environments)
+    defaultEnvironment: Environment!
+    nodes: [DeploymentTargetNode!] @hasInverse(field: deploymentTarget)
+}
+
+"""
+DeploymentTargetNode is an individual node within a DeploymentTarget (cluster).
+Node details are captured during the event call from the kube detector to the
+preprocessor and enrich the cluster information.
+"""
+type DeploymentTargetNode
+    @auth(
+    query: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryDeploymentTargetNode @cascade { deploymentTarget { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin,cluster_add,cluster_update,read]}}) { __typename }}}}}"},
+{ rule: "query($groups: [String!]) { queryDeploymentTargetNode @cascade { deploymentTarget { organization { teams { roles(filter: {group: {in: $groups}, permission: {in: [admin,cluster_add,cluster_update,read]}}) { __typename }}}}}}"},
+    ]},
+    add:    { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+    update: { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+    delete: { rule: "{$type: {eq: \"internal-account/v1\"}}" }
+    )
+{
+    "id is randomly assigned"
+    id: String! @id
+    "node name as reported by the cluster"
+    name: String! @search(by: [exact, regexp])
+    "the cluster this node belongs to"
+    deploymentTarget: DeploymentTarget! @hasInverse(field: nodes)
+    "node machine id (node.Status.NodeInfo.MachineID)"
+    machineID: String @search(by: [exact])
+    kubeletVersion: String
+    "node labels captured from the detector"
+    labels: [KeyValue!]
+    "node annotations captured from the detector"
+    annotations: [KeyValue!]
+}
+
+
+type Team implements RBAC
+    @withSubscription
+    @auth(
+    query: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryTeam @cascade { roles(filter: {group: {in: $groups}, permission: {in: [admin,integrator_create_delete,integrator_update,integrator_toggle,adhoc_create_delete,adhoc_update,adhoc_trigger_scan,exception_add,exception_update,cluster_add,cluster_update,component_license_update,team_manage,alert_update,policy_update,report_subscription_create_delete,report_subscription_update,read]}}) { __typename }}}"},
+{ rule: "query($groups: [String!]) { queryTeam @cascade { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin,integrator_create_delete,integrator_update,integrator_toggle,adhoc_create_delete,adhoc_update,adhoc_trigger_scan,exception_add,exception_update,cluster_add,cluster_update,component_license_update,team_manage,alert_update,policy_update,report_subscription_create_delete,report_subscription_update,read]}}) { __typename }}}}"},
+{ rule: "query($groups: [String!]) { queryTeam @cascade { applications { roles(filter: {group: {in: $groups}, permission: {in: [admin,integrator_create_delete,integrator_update,integrator_toggle,adhoc_create_delete,adhoc_update,adhoc_trigger_scan,exception_add,exception_update,cluster_add,cluster_update,component_license_update,team_manage,alert_update,policy_update,report_subscription_create_delete,report_subscription_update,read]}}) { __typename }}}}"},
+    ]},
+    add: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryTeam @cascade { roles(filter: {group: {in: $groups}, permission: {in: [admin,team_manage]}}) { __typename }}}"},
+{ rule: "query($groups: [String!]) { queryTeam @cascade { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin,team_manage]}}) { __typename }}}}"},
+    ]},
+    update: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryTeam @cascade { roles(filter: {group: {in: $groups}, permission: {in: [admin,team_manage]}}) { __typename }}}"},
+{ rule: "query($groups: [String!]) { queryTeam @cascade { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin,team_manage]}}) { __typename }}}}"},
+    ]},
+    delete:
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+    )
+{
+    "id is randomly assigned"
+    id: String! @id
+    name: String! @search(by: [exact])
+    email: String @search(by: [exact,regexp])
+    roles: [Role!]
+    organization: Organization! @hasInverse(field: teams)
+    applications: [Application!]
+    labels: [KeyValue!]
+    policies: [PolicyDefinition!] @hasInverse(field: ownerTeam)
+    policyEnforcements: [PolicyEnforcement!]
+    ruleScopes: [RuleScope!] @hasInverse(field: team)
+    exceptions: [ExceptionAffects!] @hasInverse(field: affectsTeam)
+    integratorConfigs: [IntegratorConfigs!] @hasInverse(field: team)
+    AttachedJira: [Jira] @hasInverse(field: team)
+    projects: [Project!] @hasInverse(field: team)
+    reportSubscriptions: [ReportSubscriptionAffects!] @hasInverse(field: affectsTeam)
+    shieldAgents: [ShieldAgent!] @hasInverse(field: team)
+}
+
+enum ShieldAgentState {
+    registered
+    connected
+    disconnected
+    unhealthy
+}
+
+type ShieldAgent
+    @auth(
+    query: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryShieldAgent @cascade { team { roles(filter: {group: {in: $groups}, permission: {in: [admin,read]}}) { __typename }}}}"},
+{ rule: "query($groups: [String!]) { queryShieldAgent @cascade { team { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin,read]}}) { __typename }}}}}"},
+        ]
+    },
+    add: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryShieldAgent @cascade { team { roles(filter: {group: {in: $groups}, permission: {in: [admin]}}) { __typename }}}}"},
+{ rule: "query($groups: [String!]) { queryShieldAgent @cascade { team { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin]}}) { __typename }}}}}"},
+        ]
+    },
+    update: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryShieldAgent @cascade { team { roles(filter: {group: {in: $groups}, permission: {in: [admin]}}) { __typename }}}}"},
+{ rule: "query($groups: [String!]) { queryShieldAgent @cascade { team { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin]}}) { __typename }}}}}"},
+        ]
+    },
+    delete:
+        { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+    )
+{
+    id: ID!
+    agentId: String! @id @search(by: [exact])
+    clusterName: String! @search(by: [exact, term])
+    namespace: String @search(by: [exact])
+    version: String
+    state: ShieldAgentState! @search(by: [exact])
+    capabilities: [String]
+    labels: [KeyValue]
+    activeScanCount: Int
+    completedScanCount: Int
+    failedScanCount: Int
+    lastHeartbeat: DateTime @search
+    connectedAt: DateTime @search
+    disconnectedAt: DateTime
+    team: Team! @hasInverse(field: shieldAgents)
+    createdAt: DateTime!
+    updatedAt: DateTime!
+    roles: [Role]
+}
+
+type Application implements RBAC
+    @withSubscription
+    @auth(
+    query: {
+        or: [
+           { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryApplication @cascade { roles(filter: {group: {in: $groups}, permission: {in: [admin,read]}}) { __typename }}}"},
+{ rule: "query($groups: [String!]) { queryApplication @cascade { team { roles(filter: {group: {in: $groups}, permission: {in: [admin,read]}}) { __typename }}}}"},
+{ rule: "query($groups: [String!]) { queryApplication @cascade { team { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin,read]}}) { __typename }}}}}"},
+    ]},
+    add: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryApplication @cascade { roles(filter: {group: {in: $groups}, permission: {in: [admin]}}) { __typename }}}"},
+{ rule: "query($groups: [String!]) { queryApplication @cascade { team { roles(filter: {group: {in: $groups}, permission: {in: [admin]}}) { __typename }}}}"},
+{ rule: "query($groups: [String!]) { queryApplication @cascade { team { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin]}}) { __typename }}}}}"},
+    ]},
+    update: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryApplication @cascade { roles(filter: {group: {in: $groups}, permission: {in: [admin]}}) { __typename }}}"},
+{ rule: "query($groups: [String!]) { queryApplication @cascade { team { roles(filter: {group: {in: $groups}, permission: {in: [admin]}}) { __typename }}}}"},
+{ rule: "query($groups: [String!]) { queryApplication @cascade { team { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin]}}) { __typename }}}}}"},
+    ]},
+    delete:
+        { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+            )
+{
+    "id is randomly assigned"
+    id: String! @id
+    name: String! @search(by: [exact, regexp])
+    roles: [Role!]
+    environments: [ApplicationEnvironment!] @hasInverse(field: application)
+    team: Team! @hasInverse(field: applications)
+    policies: [PolicyDefinition!] @hasInverse(field: ownerApplication)
+    policyEnforcements: [PolicyEnforcement!] @hasInverse(field: enforcedApplication)
+    ruleScopes: [RuleScope!] @hasInverse(field: application)
+    metadata: [KeyValue!]
+}
+
+
+"""
+ApplicationEnvironment is a running instance of an application down to the level of a namespace or its non k8s equivalent.
+"""
+type ApplicationEnvironment @withSubscription {
+    "id is randomly assigned"
+    id: String! @id
+    "environment denotes whether it is dev, prod, staging, non-prod etc"
+    environment: Environment
+    application: Application!
+    deploymentTarget: DeploymentTarget!
+    namespace: String! @search(by:[exact, regexp])
+    "toolsUsed is a comma-separated string that contains all the tools(source, build, artifact, deploy etc) for an app env"
+    toolsUsed: [String!]
+    deployments: [ApplicationDeployment!] @hasInverse(field: applicationEnvironment)
+    riskStatus: ApplicationRiskStatus @hasInverse(field: applicationEnvironment)
+    metadata: [KeyValue!]
+    integratorConfigs: [IntegratorConfigs!] @hasInverse(field: applicationEnvironment)
+    reportSubscriptions: [ReportSubscriptionAffects!] @hasInverse(field: applicationEnvironment)
+}
+
+"""
+RiskStatus tells us what risk a current application instance or a deployment is at.
+"""
+enum RiskStatus {
+    lowrisk
+    mediumrisk
+    highrisk
+    apocalypserisk
+    scanning
+    completed
+    fail
+    pending
+    paused
+}
+
+"""
+ApplicationRiskStatus tells us about the risk status and alerts for different stages for an application environment.
+"""
+type ApplicationRiskStatus {
+    id: ID!
+    riskStatus: RiskStatus @search(by: [exact,regexp])
+    sourceCodeAlerts: Int
+    buildAlerts: Int
+    artifactAlerts: Int
+    deploymentAlerts: Int
+    postDeploymentAlerts: Int
+    createdAt: DateTime!
+    updatedAt: DateTime!
+    applicationEnvironment: ApplicationEnvironment!
+}
+
+
+"""
+DeploymentStage is an enum denoting the stage of the deployment. .
+"""
+enum DeploymentStage {
+    "deployment is discovered from the events"
+    discovered
+    "scanning is under process"
+    scanning
+    "deployment is known to have passed the deployment firewall and the deployment(ie the artifact) is live"
+    current
+    "deployment becomes a past deployment because another fresh deployment has happened"
+    previous
+    "deployment is blocked by the firewall"
+    blocked
+}
+
+"""
+ApplicationDeployment tells us about the the artifact deployed along with its associated details.
+"""
+type ApplicationDeployment {
+    "id is randomly assigned"
+    id: String! @id
+    "platform will help us identify which image was actually deployed helping us identify the accurate sha"
+    platform: String @search
+    serviceUrl: String @search
+    attempt: Int @search
+    "artifact that is deployed"
+    artifact: [Artifact!] @hasInverse(field: artifactDeployment)
+    applicationEnvironment: ApplicationEnvironment!
+    deployedAt: DateTime @search
+    "deploymentStage is an enum and can be discovered, current, previous or blocked"
+    deploymentStage: DeploymentStage! @search(by: [exact])
+    "denotes if the deployment was for firewall usecase"
+    firewall: Boolean! @search
+    "denotes whether the deployment was pending or passed or blocked"
+    deploymentResult: String! @search(by: [exact])
+    "source is argo, spinnaker etc"
+    source: String!
+    "component would be a service"
+    component: String! @search(by: [exact, regexp])
+    "user who deployed the artifact"
+    deployedBy: String
+    "toolsUsed contains tools of different stages of source, build, artifact and deploy along with some different tools"
+    toolsUsed: ToolsUsed!
+    "deploymentRisk is the risk status of the deployment"
+    deploymentRisk: ApplicationDeploymentRisk @hasInverse(field: applicationDeployment)
+    "policyRunHistory is the policy execution history for this deployment"
+    policyRunHistory: [RunHistory!] @hasInverse(field: applicationDeployment)
+    deploymentTags: [KeyValue!]
+    utilizedResources: [AbstractResource] @hasInverse(field: applicationDeployments)
+    isNetworkExploitable: Boolean
+}
+
+type ToolsUsed {
+    id: ID!
+    source: String
+    build: String
+    artifact: String
+    deploy: String
+    postdeploy: String
+    sbom: String @search(by: [exact, regexp])
+    misc: [String!]
+}
+
+"""
+ApplicationDeploymentRisk tells us about the risk status and alerts for different stages for an application deployment.
+"""
+type ApplicationDeploymentRisk {
+    id: ID!
+    sourceCodeAlertsScore: Int
+    buildAlertsScore: Int
+    artifactAlertsScore: Int
+    deploymentAlertsScore: Int
+    postDeploymentAlertsScore: Int
+    deploymentRiskStatus: RiskStatus @search(by: [exact,regexp])
+    applicationDeployment: ApplicationDeployment! @hasInverse(field: deploymentRisk)
+}
+
+
+type Integrator
+    @auth(
+    query: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryIntegrator @cascade { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin,integrator_create_delete,integrator_update,integrator_toggle,read]}}) { __typename }}}}"},
+{ rule: "query($groups: [String!]) { queryIntegrator @cascade { organization { teams { roles(filter: {group: {in: $groups}, permission: {in: [admin,integrator_create_delete,integrator_update,integrator_toggle,read]}}) { __typename }}}}}"},
+{ rule: "query($groups: [String!]) { queryIntegrator @cascade { organization { teams { applications { roles(filter: {group: {in: $groups}, permission: {in: [admin,integrator_create_delete,integrator_update,integrator_toggle,read]}}) { __typename }}}}}}"},
+    ]},
+    add: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryIntegrator @cascade { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin,integrator_create_delete]}}) { __typename }}}}"},
+{ rule: "query($groups: [String!]) { queryIntegrator @cascade { organization { teams { roles(filter: {group: {in: $groups}, permission: {in: [admin,integrator_create_delete]}}) { __typename }}}}}"},
+{ rule: "query($groups: [String!]) { queryIntegrator @cascade { organization { teams { applications { roles(filter: {group: {in: $groups}, permission: {in: [admin,integrator_create_delete]}}) { __typename }}}}}}"},
+    ]},
+    update: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryIntegrator @cascade { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin,integrator_create_delete,integrator_update,integrator_toggle]}}) { __typename }}}}"},
+{ rule: "query($groups: [String!]) { queryIntegrator @cascade { organization { teams { roles(filter: {group: {in: $groups}, permission: {in: [admin,integrator_create_delete,integrator_update,integrator_toggle]}}) { __typename }}}}}"},
+{ rule: "query($groups: [String!]) { queryIntegrator @cascade { organization { teams { applications { roles(filter: {group: {in: $groups}, permission: {in: [admin,integrator_create_delete,integrator_update,integrator_toggle]}}) { __typename }}}}}}"},
+    ]},
+    delete:{
+        or: [
+            {rule: "{$type: {eq: \"internal-account/v1\"}}"},
+{ rule: "query($groups: [String!]) { queryIntegrator @cascade { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin,integrator_create_delete]}}) { __typename }}}}"},
+{ rule: "query($groups: [String!]) { queryIntegrator @cascade { organization { teams { roles(filter: {group: {in: $groups}, permission: {in: [admin,integrator_create_delete]}}) { __typename }}}}}"},
+{ rule: "query($groups: [String!]) { queryIntegrator @cascade { organization { teams { applications { roles(filter: {group: {in: $groups}, permission: {in: [admin,integrator_create_delete]}}) { __typename }}}}}}"},
+        ]
+    })
+{
+    id: String! @id
+    organization: Organization!
+    type: String! @search(by: [exact])
+    category: String! @search(by: [exact])
+    status: String! @search(by: [exact])
+    integratorConfigs: [IntegratorConfigs!]
+    createdAt: DateTime!
+    updatedAt: DateTime!
+}
+
+type IntegratorConfigs
+    @auth(
+    query: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryIntegratorConfigs @cascade { integrator { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin,integrator_create_delete,integrator_update,integrator_toggle,read]}}) { __typename }}}}}"},
+{ rule: "query($groups: [String!]) { queryIntegratorConfigs @cascade { team { roles(filter: {group: {in: $groups}, permission: {in: [admin,integrator_create_delete,integrator_update,integrator_toggle,read]}}) { __typename }}}}"},
+{ rule: "query($groups: [String!]) { queryIntegratorConfigs @cascade { reportSubscription { affects { affectsOrg { roles(filter: {group: {in: $groups}, permission: {in: [admin,report_subscription_create_delete,report_subscription_update,read]}}) { __typename }}}}}}"},
+{ rule: "query($groups: [String!]) { queryIntegratorConfigs @cascade { reportSubscription { affects { affectsTeam { roles(filter: {group: {in: $groups}, permission: {in: [admin,report_subscription_create_delete,report_subscription_update,read]}}) { __typename }}}}}}"},
+        ]
+    },
+    add: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryIntegratorConfigs @cascade { integrator { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin,integrator_create_delete]}}) { __typename }}}}}"},
+{ rule: "query($groups: [String!]) { queryIntegratorConfigs @cascade { team { roles(filter: {group: {in: $groups}, permission: {in: [admin,integrator_create_delete]}}) { __typename }}}}"},
+{ rule: "query($groups: [String!]) { queryIntegratorConfigs @cascade { reportSubscription { affects { affectsOrg { roles(filter: {group: {in: $groups}, permission: {in: [admin,report_subscription_create_delete]}}) { __typename }}}}}}"},
+{ rule: "query($groups: [String!]) { queryIntegratorConfigs @cascade { reportSubscription { affects { affectsTeam { roles(filter: {group: {in: $groups}, permission: {in: [admin,report_subscription_create_delete]}}) { __typename }}}}}}"},
+        ]
+    },
+    update: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryIntegratorConfigs @cascade { integrator { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin,integrator_create_delete,integrator_update,integrator_toggle]}}) { __typename }}}}}"},
+{ rule: "query($groups: [String!]) { queryIntegratorConfigs @cascade { team { roles(filter: {group: {in: $groups}, permission: {in: [admin,integrator_create_delete,integrator_update,integrator_toggle]}}) { __typename }}}}"},
+{ rule: "query($groups: [String!]) { queryIntegratorConfigs @cascade { reportSubscription { affects { affectsOrg { roles(filter: {group: {in: $groups}, permission: {in: [admin,report_subscription_create_delete,report_subscription_update]}}) { __typename }}}}}}"},
+{ rule: "query($groups: [String!]) { queryIntegratorConfigs @cascade { reportSubscription { affects { affectsTeam { roles(filter: {group: {in: $groups}, permission: {in: [admin,report_subscription_create_delete,report_subscription_update]}}) { __typename }}}}}}"},
+        ]
+    },
+    delete: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryIntegratorConfigs @cascade { integrator { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin,integrator_create_delete]}}) { __typename }}}}}"},
+{ rule: "query($groups: [String!]) { queryIntegratorConfigs @cascade { team { roles(filter: {group: {in: $groups}, permission: {in: [admin,integrator_create_delete]}}) { __typename }}}}"},
+{ rule: "query($groups: [String!]) { queryIntegratorConfigs @cascade { reportSubscription { affects { affectsOrg { roles(filter: {group: {in: $groups}, permission: {in: [admin,report_subscription_create_delete]}}) { __typename }}}}}}"},
+{ rule: "query($groups: [String!]) { queryIntegratorConfigs @cascade { reportSubscription { affects { affectsTeam { roles(filter: {group: {in: $groups}, permission: {in: [admin,report_subscription_create_delete]}}) { __typename }}}}}}"},
+        ]
+    })
+{
+    id: ID!
+    name: String! @search(by: [exact])
+    configs: [IntegratorKeyValues!] @hasInverse(field: integratorConfigs)
+    status: String! @search(by: [exact])
+    services: [String!] @search(by: [exact, regexp])
+    integrator: Integrator! @hasInverse(field: integratorConfigs)
+    organization: Organization@hasInverse(field: integratorConfigs)
+    team: Team @hasInverse(field: integratorConfigs)
+    environment: Environment @hasInverse(field: integratorConfigs)
+    applicationEnvironment: ApplicationEnvironment @hasInverse(field: integratorConfigs)
+    project: [Project] @hasInverse(field: integratorConfigs)
+    projectConfig: [ProjectConfig] @hasInverse(field: integratorConfigs)
+    reportSubscription: [ReportSubscription] @hasInverse(field: integratorConfigs)
+}
+
+type IntegratorKeyValues
+    @auth(
+    query: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryIntegratorKeyValues @cascade { integratorConfigs { integrator { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin,integrator_create_delete,integrator_update,integrator_toggle,read]}}) { __typename }}}}}}"},
+{ rule: "query($groups: [String!]) { queryIntegratorKeyValues @cascade { integratorConfigs { team { roles(filter: {group: {in: $groups}, permission: {in: [admin,integrator_create_delete,integrator_update,integrator_toggle,read]}}) { __typename }}}}}"},
+        ]
+    },
+    add: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryIntegratorKeyValues @cascade { integratorConfigs { integrator { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin,integrator_create_delete,integrator_update]}}) { __typename }}}}}}"},
+{ rule: "query($groups: [String!]) { queryIntegratorKeyValues @cascade { integratorConfigs { team { roles(filter: {group: {in: $groups}, permission: {in: [admin,integrator_create_delete,integrator_update]}}) { __typename }}}}}"},
+        ]
+    },
+    #update of the values of the integrator will not work if user has perms of integrator_toggle.
+    #Perm integrator_toggle will only help in changing status i.e. active/disabled or add/remove for a team/app"
+    update: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryIntegratorKeyValues @cascade { integratorConfigs { integrator { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin,integrator_create_delete,integrator_update]}}) { __typename }}}}}}"},
+{ rule: "query($groups: [String!]) { queryIntegratorKeyValues @cascade { integratorConfigs { team { roles(filter: {group: {in: $groups}, permission: {in: [admin,integrator_create_delete,integrator_update]}}) { __typename }}}}}"},
+        ]
+    },
+    delete: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryIntegratorKeyValues @cascade { integratorConfigs { integrator { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin,integrator_create_delete,integrator_update]}}) { __typename }}}}}}"},
+{ rule: "query($groups: [String!]) { queryIntegratorKeyValues @cascade { integratorConfigs { team { roles(filter: {group: {in: $groups}, permission: {in: [admin,integrator_create_delete,integrator_update]}}) { __typename }}}}}"},
+        ]
+    })
+{
+    id: ID!
+    feat: Boolean! @search
+    key: String! @search(by: [exact])
+    value: String! @search(by: [exact, regexp])
+    encrypt: Boolean! @search
+    integratorConfigs: IntegratorConfigs! @hasInverse(field: configs)
+}
+
+"""
+Tag tells us about the tags that are linked to policies and other components.
+"""
+type Tag {
+    id: String! @id @search(by:[exact])
+    tagName: String! @search(by:[exact])
+    tagValue: String! @search(by:[exact,regexp])
+    tagDescription: String
+    createdBy: String @search(by:[exact])
+    createdAt: DateTime!
+    updatedAt: DateTime!
+    policies: [PolicyEnforcement!] @hasInverse(field: tags)
+}
+
+type PolicyDefinition {
+    id: String! @id
+    ownerOrg: Organization!
+    ownerTeam: Team
+    ownerApplication: Application
+    ownerProject: Project
+    createdAt: DateTime!
+    updatedAt: DateTime!
+    policyName: String! @search(by: [exact,regexp])
+    category: String! @search(by: [exact])
+    stage: String! @search(by: [exact,regexp])
+    description: String! @search(by: [exact])
+    scheduledPolicy: Boolean! @search
+    script: String! @search(by: [exact])
+    variables: String @search(by: [exact])
+    conditionName: String @search(by: [exact])
+    suggestion: String @search(by: [exact])
+}
+
+type PolicyEnforcement
+@auth(
+    query: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryPolicyEnforcement @cascade { enforcedOrg { roles(filter: {group: {in: $groups}, permission: {in: [admin,policy_update,read]}}) { __typename }}}}"},
+{ rule: "query($groups: [String!]) { queryPolicyEnforcement @cascade { enforcedOrg { teams { roles(filter: {group: {in: $groups}, permission: {in: [admin,policy_update,read]}}) { __typename }}}}}"},
+{ rule: "query($groups: [String!]) { queryPolicyEnforcement @cascade { enforcedTeam { roles(filter: {group: {in: $groups}, permission: {in: [admin,policy_update,read]}}) { __typename }}}}"},
+{ rule: "query($groups: [String!]) { queryPolicyEnforcement @cascade { enforcedApplication { team { roles(filter: {group: {in: $groups}, permission: {in: [admin,policy_update]}}) { __typename }}}}}"},
+{ rule: "query($groups: [String!]) { queryPolicyEnforcement @cascade { enforcedProject { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin,policy_update,adhoc_create_delete,adhoc_update]}}) { __typename }}}}}"},
+{ rule: "query($groups: [String!]) { queryPolicyEnforcement @cascade { enforcedProject { team { roles(filter: {group: {in: $groups}, permission: {in: [admin,policy_update,adhoc_create_delete,adhoc_update]}}) { __typename }}}}}"},
+        ]
+    },
+    add: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryPolicyEnforcement @cascade { enforcedOrg { roles(filter: {group: {in: $groups}, permission: {in: [admin,policy_update]}}) { __typename }}}}"},
+{ rule: "query($groups: [String!]) { queryPolicyEnforcement @cascade { enforcedOrg { teams { roles(filter: {group: {in: $groups}, permission: {in: [admin,policy_update]}}) { __typename }}}}}"},
+{ rule: "query($groups: [String!]) { queryPolicyEnforcement @cascade { enforcedTeam { roles(filter: {group: {in: $groups}, permission: {in: [admin,policy_update]}}) { __typename }}}}"},
+{ rule: "query($groups: [String!]) { queryPolicyEnforcement @cascade { enforcedApplication { team { roles(filter: {group: {in: $groups}, permission: {in: [admin,policy_update]}}) { __typename }}}}}"},
+{ rule: "query($groups: [String!]) { queryPolicyEnforcement @cascade { enforcedProject { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin,policy_update,adhoc_create_delete,adhoc_update]}}) { __typename }}}}}"},
+{ rule: "query($groups: [String!]) { queryPolicyEnforcement @cascade { enforcedProject { team { roles(filter: {group: {in: $groups}, permission: {in: [admin,policy_update,adhoc_create_delete,adhoc_update]}}) { __typename }}}}}"},
+        ]
+    },
+    update: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryPolicyEnforcement @cascade { enforcedOrg { roles(filter: {group: {in: $groups}, permission: {in: [admin,policy_update]}}) { __typename }}}}"},
+{ rule: "query($groups: [String!]) { queryPolicyEnforcement @cascade { enforcedTeam { roles(filter: {group: {in: $groups}, permission: {in: [admin,policy_update]}}) { __typename }}}}"},
+{ rule: "query($groups: [String!]) { queryPolicyEnforcement @cascade { enforcedApplication { team { roles(filter: {group: {in: $groups}, permission: {in: [admin,policy_update]}}) { __typename }}}}}"},
+{ rule: "query($groups: [String!]) { queryPolicyEnforcement @cascade { enforcedProject { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin,policy_update,adhoc_create_delete,adhoc_update]}}) { __typename }}}}}"},
+{ rule: "query($groups: [String!]) { queryPolicyEnforcement @cascade { enforcedProject { team { roles(filter: {group: {in: $groups}, permission: {in: [admin,policy_update,adhoc_create_delete,adhoc_update]}}) { __typename }}}}}"},
+        ]
+    },
+    delete: { rule: "{$type: {eq: \"internal-account/v1\"}}"}
+    )
+ {
+    id: ID!
+    policy: PolicyDefinition!
+    #It should be either of the three or else if node is shared it will make changes to 2 different destination, how to enforce that?
+    enforcedOrg: Organization @hasInverse(field: policyEnforcements)
+    enforcedTeam: Team @hasInverse(field: policyEnforcements)
+    enforcedApplication: Application @hasInverse(field: policyEnforcements)
+    enforcedProject: Project @hasInverse(field: policyEnforcements)
+    status: Boolean! @search
+    forceApply: Boolean @search
+    severity: Severity! @search(by: [exact,regexp])
+    datasourceTool: String! @search(by: [exact])
+    action: String! @search(by: [exact])
+    conditionValue: String @search(by: [exact])
+    environments: [Environment!]
+    tags: [Tag!] @hasInverse(field: policies)
+    createdAt: DateTime!
+    updatedAt: DateTime!
+}
+
+type Rule {
+    id: ID!
+    name: String! @search(by: [exact,regexp])
+    description: String!
+    datasourceTool: String! @search(by: [exact])
+    severity: Severity! @search(by: [exact]) #default severity of tool not to be updated
+    scopes: [RuleScope!] @hasInverse(field: rule)
+    createdAt: DateTime!
+}
+
+type RuleScope {
+  id: ID!
+  severity: Severity! @search(by: [exact])
+  status: Boolean! @search
+  rule: Rule!
+  team: Team
+  application: Application
+  environment: Environment
+}
+
+type Jira {
+    id: ID!
+    jiraId: String! @search(by: [exact, regexp])
+    url: String!
+    status: String! @search(by: [exact, regexp])
+    assignee: String @search(by: [exact, regexp])
+    createdAt: DateTime!
+    updatedAt: DateTime!
+    affectsIndividualComponent: [RunHistory!] @hasInverse(field: AttachedJira)
+    affectsSecurityissue: SecurityIssue @hasInverse(field: AttachedJira)
+    team: Team @hasInverse(field: AttachedJira)
+}
+
+type RunHistory  {
+    id: ID!
+    policyId: String! @search(by: [exact])
+    applicationDeployment: ApplicationDeployment @hasInverse(field: policyRunHistory)
+    artifactScan: ArtifactScanData @hasInverse(field: artifactRunHistory)
+    PolicyName: String! @search(by: [exact,regexp])
+    Stage: String! @search(by: [exact,regexp])
+    Artifact: String! @search(by: [exact])
+    ArtifactTag: String! @search(by: [exact])
+    ArtifactSha: String! @search(by: [exact,regexp])
+    ArtifactNameTag: String! @search(by: [exact,regexp])
+    DatasourceTool: String! @search(by: [exact,regexp])
+    ToolAccountName: String @search(by: [exact])
+    DeploymentID: String @search(by: [exact,regexp])
+    BuildTool: String @search(by: [exact,regexp])
+    SourceTool: String @search(by: [exact,regexp])
+    ArtifactTool: String @search(by: [exact,regexp])
+    DeployTool: String @search(by: [exact,regexp])
+    SbomTool: String @search(by: [exact,regexp])
+    Namespace: String @search(by: [exact,regexp])
+    Account: String @search(by: [exact,regexp])
+    Cluster: String @search(by: [exact,regexp])
+    Application: String @search(by: [exact,regexp])
+    TeamID: String @search(by: [exact,regexp])
+    CreatedAt: DateTime! @search
+    UpdatedAt: DateTime! @search
+    DeployedAt: DateTime! @search
+    Hash: String
+    diffScan: Boolean! @search
+    Pass: Boolean! @search
+    EvalData: PolicyEvaluationData @hasInverse(field: affects)
+    FileApi: String
+    AttachedJira: Jira @hasInverse(field: affectsIndividualComponent)
+    Status: String! @search(by: [exact])
+    exception: ExceptionAffects @hasInverse(field: runHistories)
+    scheduledPolicy: Boolean! @search
+    policyEnforcements: PolicyEnforcement!
+    securityIssue: SecurityIssue @hasInverse(field: Affects)
+    # scanResults: ScanResult @hasInverse(field: runHistories)
+}
+
+type PolicyEvaluationData {
+    """data Type is gonna help us identify if a DB record is used to evaluate or a json
+   current scope json is for generic policies & vuln policies will attach VulnNode -> pending redis data & other inprogram policies"""
+    Id: ID!
+    dataType: String! @search(by: [exact])
+    rawData: String
+    vulnNode: Vulnerability @hasInverse(field: policyEvaluation)
+    enrichedAffectedResources: [EnrichedFinding!] @hasInverse(field: finding)
+    affects:RunHistory! @hasInverse(field: EvalData)
+    checkedResources: Int
+    affectedResources: Int
+}
+
+type SecurityIssue
+@auth(
+    update: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { querySecurityIssue @cascade { policyEnforcements { enforcedOrg { roles(filter: {group: {in: $groups}, permission: {in: [admin,alert_update]}}) { __typename }}}}}"},
+{ rule: "query($groups: [String!]) { querySecurityIssue @cascade { policyEnforcements { enforcedOrg { teams { roles(filter: {group: {in: $groups}, permission: {in: [admin,alert_update]}}) { __typename }}}}}}"},
+{ rule: "query($groups: [String!]) { querySecurityIssue @cascade { policyEnforcements { enforcedTeam { roles(filter: {group: {in: $groups}, permission: {in: [admin,alert_update]}}) { __typename }}}}}"},
+{ rule: "query($groups: [String!]) { querySecurityIssue @cascade { policyEnforcements { enforcedApplication { roles(filter: {group: {in: $groups}, permission: {in: [admin,alert_update]}}) { __typename }}}}}"},
+        ]
+    })
+{
+    id: ID!
+    AlertTitle: String @search(by: [exact,regexp])
+    AlertMessage: String @search(by: [exact])
+    Suggestions: String @search(by: [exact])
+    Severity: Severity! @search(by: [exact,regexp])
+    SeverityInt: Int! @search
+    CreatedAt: DateTime! @search
+    UpdatedAt: DateTime! @search
+    Action: String! @search(by: [exact,regexp])
+    Reason: String @search(by: [exact])
+    Error: String @search(by: [exact])
+    policyEnforcements: PolicyEnforcement!
+    AttachedJira: [Jira] @hasInverse(field: affectsSecurityissue)
+    Affects: [RunHistory!] @hasInverse(field: securityIssue)
+}
+
+"""
+BuildTool contains data from build tool events.
+"""
+type BuildTool {
+    "id is randomly assigned"
+    id: String! @id
+    "buildId is a unique job id, run id for a job/pipeline/action"
+    buildId: String! @search(by: [exact,regexp])
+    "tool is jenkins etc"
+    tool: String! @search(by: [exact])
+    "buildName is the name of the job/pipeline/action"
+    buildName: String! @search(by: [exact, regexp])
+    buildUrl: String! @search(by: [exact,  regexp])
+    "buildTime is the time at which the artifact was built"
+    buildTime: DateTime
+    "buildUser is the user that built the artifact"
+    buildUser: String
+    "plugins used at the build time"
+    buildPlugins:[Artifact!] @hasInverse(field: plugins)
+    "sourceCodeTool links a BuildTool node to the source details"
+    sourceCodeTool: [SourceCodeTool!] @hasInverse(field: buildTool)
+    "commitMetaData links a BuildTool node to the git commit based details"
+    commitMetaData: [CommitMetaData!] @hasInverse(field: buildTool)
+    createdAt: DateTime!
+}
+
+"""
+SourceCodeTool contains the source details about the artifact that was built.
+"""
+type SourceCodeTool {
+    "id is randomly assigned"
+    id: String! @id
+    createdAt: DateTime!
+    "scm is the scm tool github/gitlab etc"
+    scm: String! @search(by: [exact,regexp])
+    "repository is the git remote repository"
+    repository: String! @search(by: [exact,regexp])
+    "branch is the git branch on which the artifact was built"
+    branch: String! @search(by: [exact,regexp])
+    "headCommit is the checkout out head commit"
+    headCommit: String @search(by: [exact,regexp])
+    "diffCommits is a comma separated string of the commits between the previous built artifact and the current"
+    diffCommits: String
+    licenseName: String
+    visibility: String
+    workflowName: String
+    "parentRepo is populated in case the git repo is a fork"
+    parentRepo: String
+    buildTool: BuildTool
+    sourceCodePath: String
+    sonarqubeProjectKey: String
+    "primaryLanguage is the dominant programming-typed language (e.g., Go, Python, Java)"
+    primaryLanguage: String @search(by: [exact, regexp])
+    "languageBreakdown is the per-language stats (name, percentage, bytes, files, linguist type) ranked by bytes"
+    languageBreakdown: [Language!]
+    "artifactNode links a Source node to an artifact"
+    artifactNode: Artifact @hasInverse(field: sourceDetails)
+    "digest is the sha of the artifact"
+    digest: String! @search(by: [exact])
+    "buildDigest is the sha of the artifact as sent from the build tool"
+    buildDigest: String @search(by: [exact])
+}
+
+"""
+Language represents a single programming (or markup / data / prose) language detected
+in a source repo, with its share of the source by byte count.
+"""
+type Language {
+    "id is deterministic: <SourceCodeTool.digest>-<language name> so re-runs upsert in place"
+    id: String! @id
+    "name is the language name (e.g. Go, Python, C++)"
+    name: String! @search(by: [exact, regexp])
+    "type is the linguist classification: programming, markup, data, prose, unknown"
+    type: String @search(by: [exact])
+    "percentage by bytes within the source repo (0-100)"
+    percentage: Float @search
+    "bytes counted toward this language across all source files"
+    bytes: Int
+    "files counted toward this language"
+    files: Int
+}
+
+"""
+CommitMetaData contains the git commit related details of the source repository .
+"""
+type CommitMetaData {
+    "id is randomly assigned"
+    id: ID!
+    "commit is a git commit that was used to build an artifact"
+    commit: String @search(by: [exact])
+    repository: String
+    "commitSign tells us whether the commit is signed"
+    commitSign: Boolean
+    noOfReviewersConf: Int
+    reviewerList: [String!]
+    approverList: [String!]
+    buildTool: BuildTool! @hasInverse(field: commitMetaData)
+}
+
+type Artifact {
+    id: String! @id
+    attempt: Int @search
+    artifactType: String! @search(by: [exact])
+    artifactName: String! @search(by: [exact, regexp])
+    artifactTag: String! @search(by: [exact, regexp])
+    artifactSha: String! @search(by: [exact])
+    scanData: [ArtifactScanData!]
+    artifactDeployment: [ApplicationDeployment!] @hasInverse(field: artifact)
+    sourceDetails: SourceCodeTool @hasInverse(field: artifactNode)
+    plugins: [BuildTool!] @hasInverse(field: buildPlugins)
+}
+
+
+interface Scan{
+    id: String! @id
+    status: String @search(by:[exact])
+    detailedStatus: String
+    category: String @search(by: [exact,regexp])
+    createdAt: DateTime @search
+    updatedAt: DateTime @search
+}
+
+type ArtifactScanData {
+    id: String! @id
+    "platform: String! @search(by: [exact]) -> add later"
+    artifactSha: String! @search(by: [exact])
+    artifactNameTag: String! @search(by: [exact,regexp])
+    tool: String! @search(by: [exact])
+    artifactDetails: Artifact @hasInverse(field: scanData)
+    lastScannedAt: DateTime
+    createdAt: DateTime @search
+    vulnSource: String @search(by: [exact])
+    vulnTrackingId: String
+    vulnScanState: String @search(by: [exact])
+    scanState: String @search(by: [exact])
+    directDeps: [Component!] # Direct dependencies explicitly declared in the source code or configuration.
+    indirectDeps: [Component!] # Indirect dependencies installed to support direct dependencies (e.g., sub-dependencies).
+    transitiveDeps: [Component!] # Dependencies present in the built artifact but not declared in the source code; typically include OS-level or environment-specific packages.
+    components: [Component!]
     vulnCriticalCount: Int @search
     vulnHighCount: Int @search
     vulnMediumCount: Int @search
@@ -10,21 +979,131 @@ type Image {
     vulnUnknownCount: Int @search
     vulnNoneCount: Int @search
     vulnTotalCount: Int @search
+    scanFile: [ScanFileResult!]
+    artifactRisk: ArtifactRisk @hasInverse(field: artifactScanResult)
+    artifactRunHistory: [RunHistory!] @hasInverse(field: artifactScan)
+    artifactTags: [KeyValue!]
+    team: Team
+    scanTarget: [ScanTarget!] @hasInverse(field: artifactScanData)
+    osComponents: [Component!]
+    libraryComponents: [Component!]
+    binaryComponents: [Component!]
+}
+
+type ArtifactRisk {
+    id: ID!
+    sourceCodeAlertsScore: Int
+    buildAlertsScore: Int
+    artifactAlertsScore: Int
+    deploymentAlertsScore: Int
+    postdeployAlertsScore: Int
+    artifactRiskStatus: RiskStatus @search(by: [exact,regexp])
+    artifactScanResult: ArtifactScanData! @hasInverse(field: artifactRisk)
+}
+
+type ScanFileResult {
+    id: ID!
+    name: String! @search(by: [exact, regexp])
+    url: String!
 }
 
 type Component {
     id: String! @id
     type: String!
-    name: String! @search(by: [exact])
-    version: String! @search(by: [exact])
-    licenses: [String!]
-    purl: String @search(by: [exact])
+    name: String! @search(by: [exact, regexp])
+    version: String! @search(by: [exact, regexp])
+    licenses: [String!] @search(by: [exact, regexp])
+    omittedLicenses: [String!] @search(by: [exact, regexp])
+    copyrights: [String!]
+    srcURL: String
+    webURL: String
+    licenseFileURL: String
+    purl: String @search(by: [exact, regexp])
     cpe: String @search(by: [exact])
+    scannedAt: DateTime @search
+    analysisRequired: Boolean @search
+    analysis: ComponentAnalysis @hasInverse(field: Components)
     vulnerabilities: [Vulnerability!] @hasInverse(field: affects)
-    images: [Image!] @hasInverse(field: components)
+    artifacts: [ArtifactScanData!] @hasInverse(field: components)
+    eolScore: Int @search
+    eolRisk: Severity @search(by: [exact,regexp])
+    eolException: Boolean @search
+    isOlderThanBaseline: Boolean @search
+    description: String @search(by: [exact, regexp])
+    supplier: String @search(by: [exact, regexp])
+    origin: String @search(by: [exact, regexp])
+    releaseDate: DateTime @search
+    eolDate: DateTime @search
+    supportStatus: String @search(by: [exact, regexp])
+    criticality: String @search(by: [exact, regexp])
+    executable: Boolean @search
+    archive: Boolean @search
+    structured: Boolean @search
+    checksums: [String!] @search(by: [exact, regexp])
+    comments: String @search(by: [exact, regexp])
+    severity: Severity @search(by: [exact,regexp])
+    severityInt: Int @search
+    civns: [CIVN!]
+}
+
+type ComponentAnalysis {
+    Id: ID!
+    Name: String! @search(by: [exact,regexp])
+    Components:[Component!] @hasInverse(field: analysis)
+    Severity: Severity @search(by: [exact,regexp])
+    SeverityInt: Int @search
+    Stars: Int @search
+    Forks: Int @search
+    Contributors: Int @search
+    Contributions: Int @search
+    VulnCritical: Int @search
+    VulnHigh: Int @search
+    VulnMedium: Int @search
+    VulnLow: Int @search
+    VulnOthers: Int @search
+    MeanTimeToRepair:  Float @search
+    Licenses: [String!] @search(by: [exact,regexp])
+    OmittedLicenses: [String!] @search(by: [exact,regexp])
+    CreatedAt: DateTime
+    ScannedAt: DateTime
+    LastViewed: DateTime @search
+    BaselineComponent: Component
+}
+
+type ComponentLicenses
+    @auth(
+        add: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryComponentLicenses @cascade { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin,component_license_update]}}) { __typename }}}}"},
+{ rule: "query($groups: [String!]) { queryComponentLicenses @cascade { organization { teams { roles(filter: {group: {in: $groups}, permission: {in: [admin,component_license_update]}}) { __typename }}}}}"},
+    ]},
+    update: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryComponentLicenses @cascade { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin,component_license_update]}}) { __typename }}}}"},
+{ rule: "query($groups: [String!]) { queryComponentLicenses @cascade { organization { teams { roles(filter: {group: {in: $groups}, permission: {in: [admin,component_license_update]}}) { __typename }}}}}"},
+    ]}
+    )
+{
+    Id: ID!
+    Name: String! @search(by: [exact,regexp])
+    Category: String! @search(by: [exact,regexp])
+    Url: String @search(by: [exact,regexp])
+    organization: Organization @hasInverse(field: licenses)
+}
+
+type CIVN{
+    Id: String! @id
+    Title: String! @search
+    Severity: Severity! @search(by: [exact,regexp])
+    SourceUrl: String!
+    IssueDate: DateTime! @search
+    CVES: [String!]
 }
 
 enum Severity {
+    apocalypse
     critical
     high
     medium
@@ -32,20 +1111,35 @@ enum Severity {
     info
     none
     unknown
+    acceptable
+    no_risk
 }
 
 type Vulnerability {
-    id: String! @id
-    parent: String! @search(by: [exact])
+    id: String! @id @search(by: [exact, regexp])
+    source: String @search(by: [exact, regexp])
+    parent: String! @search(by: [exact, regexp])
     ratings: Severity @search(by: [exact])
+    ratingsInt: Int @search
     cwes: [CWE!]
     summary: String
     detail: String
     recommendation: String
     published: DateTime
     modified: DateTime
-    cvss: [CVSS!]
+    createdAt: DateTime @search
+    cvss: Float @search
+    attackVector: String @search(by:[exact])
+    priorityInt: Int @search
+    epss: Float @search
+    cisa_kev: String @search(by: [exact, regexp])
+    exploitation: String @search(by: [exact, regexp])
+    automatable: String @search(by: [exact, regexp])
+    technicalImpact: String @search(by: [exact, regexp])
     affects: [Component!] @hasInverse(field: vulnerabilities)
+    policyEvaluation: [PolicyEvaluationData!] @hasInverse(field: vulnNode)
+    status: String @search(by:[exact])
+    justification: String @search(by:[exact])
 }
 
 type CWE {
@@ -54,7 +1148,579 @@ type CWE {
     description: String
 }
 
-type CVSS {
-    type: String
-    score: String
+type Exception implements RBAC
+    @auth(
+    query: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryException @cascade { roles(filter: {group: {in: $groups}, permission: {in: [admin,exception_add,exception_update,read]}}) { __typename }}}"},
+{ rule: "query($groups: [String!]) { queryException @cascade { affects { affectsTeam { roles(filter: {group: {in: $groups}, permission: {in: [admin,exception_add,exception_update,read]}}) { __typename }}}}}"},
+{ rule: "query($groups: [String!]) { queryException @cascade { affects { affectsOrg { roles(filter: {group: {in: $groups}, permission: {in: [admin,exception_add,exception_update,read]}}) { __typename }}}}}"},
+    ]},
+    add: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryException @cascade { affects { affectsTeam { roles(filter: {group: {in: $groups}, permission: {in: [admin,exception_add]}}) { __typename }}}}}"},
+{ rule: "query($groups: [String!]) { queryException @cascade { affects { affectsOrg { roles(filter: {group: {in: $groups}, permission: {in: [admin,exception_add]}}) { __typename }}}}}"},
+    ]},
+    update: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryException @cascade { affects { affectsTeam { roles(filter: {group: {in: $groups}, permission: {in: [admin,exception_add,exception_update]}}) { __typename }}}}}"},
+{ rule: "query($groups: [String!]) { queryException @cascade { affects { affectsOrg { roles(filter: {group: {in: $groups}, permission: {in: [admin,exception_add,exception_update]}}) { __typename }}}}}"},
+    ]},
+    delete:{ rule: "{$type: {eq: \"internal-account/v1\"}}" }
+    )
+{
+    id: ID!
+    type: String! @search(by: [exact, regexp])
+    name: String! @search(by: [exact, regexp])
+    affects: [ExceptionAffects!]
+    createdAt: DateTime! @search
+    updatedAt: DateTime! @search
 }
+
+type ExceptionAffects implements RBAC
+    @auth(
+    query: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryExceptionAffects @cascade { roles(filter: {group: {in: $groups}, permission: {in: [admin,exception_add,exception_update,read]}}) { __typename }}}"},
+{ rule: "query($groups: [String!]) { queryExceptionAffects @cascade { affectsTeam { roles(filter: {group: {in: $groups}, permission: {in: [admin,exception_add,exception_update,read]}}) { __typename }}}}"},
+{ rule: "query($groups: [String!]) { queryExceptionAffects @cascade { affectsOrg { roles(filter: {group: {in: $groups}, permission: {in: [admin,exception_add,exception_update,read]}}) { __typename }}}}"},
+    ]},
+    add: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryExceptionAffects @cascade { affectsTeam { roles(filter: {group: {in: $groups}, permission: {in: [admin,exception_add,exception_update]}}) { __typename }}}}"},
+{ rule: "query($groups: [String!]) { queryExceptionAffects @cascade { affectsOrg { roles(filter: {group: {in: $groups}, permission: {in: [admin,exception_add,exception_update]}}) { __typename }}}}"},
+    ]},
+    update: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryExceptionAffects @cascade { affectsTeam { roles(filter: {group: {in: $groups}, permission: {in: [admin,exception_add,exception_update]}}) { __typename }}}}"},
+{ rule: "query($groups: [String!]) { queryExceptionAffects @cascade { affectsOrg { roles(filter: {group: {in: $groups}, permission: {in: [admin,exception_add,exception_update]}}) { __typename }}}}"},
+    ]},
+    delete:{
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryExceptionAffects @cascade { affectsTeam { roles(filter: {group: {in: $groups}, permission: {in: [admin]}}) { __typename }}}}"},
+{ rule: "query($groups: [String!]) { queryExceptionAffects @cascade { affectsOrg { roles(filter: {group: {in: $groups}, permission: {in: [admin]}}) { __typename }}}}"},
+    ]}
+            )
+{
+    id: ID!
+    createdBy: String! @search(by: [exact, regexp])
+    affectsOrg: Organization @hasInverse(field: exceptions)
+    affectsTeam: Team @hasInverse(field: exceptions)
+    affectsApplication: Application
+    affectsServices: [String!] @search(by: [exact, regexp])
+    validUpTo: DateTime! @search
+    createdAt: DateTime! @search
+    updatedAt: DateTime! @search
+    reason: String! @search(by: [exact, regexp])
+    status: String! @search(by: [exact, regexp])
+    exception: Exception! @hasInverse(field: affects)
+    runHistories: [RunHistory!] @hasInverse(field: exception)
+}
+
+enum ReportSubscriptionStatus {
+    active
+    inactive
+}
+
+enum ReportSubscriptionTrigger {
+    scheduled
+    automated
+}
+
+enum ReportSubscriptionSchedule {
+    daily
+    weekly
+    monthly
+    auto
+}
+
+type ReportSubscription implements RBAC
+    @auth(
+    query: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryReportSubscription @cascade { roles(filter: {group: {in: $groups}, permission: {in: [admin,report_subscription_create_delete,report_subscription_update,read]}}) { __typename }}}"},
+{ rule: "query($groups: [String!]) { queryReportSubscription @cascade { affects { affectsTeam { roles(filter: {group: {in: $groups}, permission: {in: [admin,report_subscription_create_delete,report_subscription_update,read]}}) { __typename }}}}}"},
+{ rule: "query($groups: [String!]) { queryReportSubscription @cascade { affects { affectsOrg { roles(filter: {group: {in: $groups}, permission: {in: [admin,report_subscription_create_delete,report_subscription_update,read]}}) { __typename }}}}}"},
+    ]},
+    add: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryReportSubscription @cascade { affects { affectsTeam { roles(filter: {group: {in: $groups}, permission: {in: [admin,report_subscription_create_delete]}}) { __typename }}}}}"},
+{ rule: "query($groups: [String!]) { queryReportSubscription @cascade { affects { affectsOrg { roles(filter: {group: {in: $groups}, permission: {in: [admin,report_subscription_create_delete]}}) { __typename }}}}}"},
+    ]},
+    update: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryReportSubscription @cascade { affects { affectsTeam { roles(filter: {group: {in: $groups}, permission: {in: [admin,report_subscription_create_delete,report_subscription_update]}}) { __typename }}}}}"},
+{ rule: "query($groups: [String!]) { queryReportSubscription @cascade { affects { affectsOrg { roles(filter: {group: {in: $groups}, permission: {in: [admin,report_subscription_create_delete,report_subscription_update]}}) { __typename }}}}}"},
+    ]},
+    delete:{
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryReportSubscription @cascade { affects { affectsTeam { roles(filter: {group: {in: $groups}, permission: {in: [admin,report_subscription_create_delete]}}) { __typename }}}}}"},
+{ rule: "query($groups: [String!]) { queryReportSubscription @cascade { affects { affectsOrg { roles(filter: {group: {in: $groups}, permission: {in: [admin,report_subscription_create_delete]}}) { __typename }}}}}"},
+    ]}
+    )
+{
+    id: ID!
+    name: String! @search(by: [exact])
+    reportType: [String!] @search(by: [exact])
+    trigger: ReportSubscriptionTrigger! @search(by: [exact])
+    schedule: ReportSubscriptionSchedule @search(by: [exact])
+    integratorConfigs: [IntegratorConfigs!] @hasInverse(field: reportSubscription)
+    status: ReportSubscriptionStatus! @search(by: [exact])
+    affects: [ReportSubscriptionAffects!]
+    createdAt: DateTime! @search
+    updatedAt: DateTime! @search
+}
+
+type ReportSubscriptionAffects implements RBAC
+    @auth(
+    query: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryReportSubscriptionAffects @cascade { roles(filter: {group: {in: $groups}, permission: {in: [admin,report_subscription_create_delete,report_subscription_update,read]}}) { __typename }}}"},
+{ rule: "query($groups: [String!]) { queryReportSubscriptionAffects @cascade { affectsTeam { roles(filter: {group: {in: $groups}, permission: {in: [admin,report_subscription_create_delete,report_subscription_update,read]}}) { __typename }}}}"},
+{ rule: "query($groups: [String!]) { queryReportSubscriptionAffects @cascade { affectsOrg { roles(filter: {group: {in: $groups}, permission: {in: [admin,report_subscription_create_delete,report_subscription_update,read]}}) { __typename }}}}"},
+    ]},
+    add: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryReportSubscriptionAffects @cascade { affectsTeam { roles(filter: {group: {in: $groups}, permission: {in: [admin,report_subscription_create_delete]}}) { __typename }}}}"},
+{ rule: "query($groups: [String!]) { queryReportSubscriptionAffects @cascade { affectsOrg { roles(filter: {group: {in: $groups}, permission: {in: [admin,report_subscription_create_delete]}}) { __typename }}}}"},
+    ]},
+    update: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryReportSubscriptionAffects @cascade { affectsTeam { roles(filter: {group: {in: $groups}, permission: {in: [admin,report_subscription_create_delete,report_subscription_update]}}) { __typename }}}}"},
+{ rule: "query($groups: [String!]) { queryReportSubscriptionAffects @cascade { affectsOrg { roles(filter: {group: {in: $groups}, permission: {in: [admin,report_subscription_create_delete,report_subscription_update]}}) { __typename }}}}"},
+    ]},
+    delete:{
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryReportSubscriptionAffects @cascade { affectsTeam { roles(filter: {group: {in: $groups}, permission: {in: [admin,report_subscription_create_delete]}}) { __typename }}}}"},
+{ rule: "query($groups: [String!]) { queryReportSubscriptionAffects @cascade { affectsOrg { roles(filter: {group: {in: $groups}, permission: {in: [admin,report_subscription_create_delete]}}) { __typename }}}}"},
+    ]}
+    )
+{
+    id: ID!
+    affectsOrg: Organization @hasInverse(field: reportSubscriptions)
+    affectsTeam: Team @hasInverse(field: reportSubscriptions)
+    affectsEnvironment: Environment
+    applicationEnvironment: ApplicationEnvironment @hasInverse(field: reportSubscriptions)
+    project: Project @hasInverse(field: reportSubscriptions)
+    affectsServices: [String!] @search(by: [exact])
+    createdAt: DateTime! @search
+    updatedAt: DateTime! @search
+    reportSubscription: ReportSubscription! @hasInverse(field: affects)
+}
+
+
+interface AbstractResource{
+    id: String! @id
+    organization: Organization! @hasInverse(field: resources)
+    cloudAccountName: String! @search(by: [exact])
+    cloudProvider: String!  @search(by: [exact])
+    resourceId: String  @search(by: [exact, regexp])
+    name: String  @search(by: [exact, regexp])
+    resourceType: String  @search(by: [exact, regexp])
+    childResources: [AbstractResource!] @hasInverse(field: parentResource)
+    parentResource: AbstractResource @hasInverse(field: childResources)
+    associatedResources: [AbstractResource!] @hasInverse(field: associatedResources)
+    enrichedFindings: [EnrichedFinding!] @hasInverse(field: affectedResource)
+    applicationDeployments: [ApplicationDeployment!] @hasInverse(field: utilizedResources)
+}
+
+type CSPMResourceScanGroup implements AbstractResource @auth(
+    query: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryCSPMResourceScanGroup @cascade { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin,read]}}) { __typename }}}}"},
+{ rule: "query($groups: [String!]) { queryCSPMResourceScanGroup @cascade { organization { teams { roles(filter: {group: {in: $groups}, permission: {in: [admin,read]}}) { __typename }}}}}"},
+{ rule: "query($groups: [String!]) { queryCSPMResourceScanGroup @cascade { organization { teams { applications { roles(filter: {group: {in: $groups}, permission: {in: [admin,read]}}) { __typename }}}}}}"},
+    ]},
+    add: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryCSPMResourceScanGroup @cascade { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin]}}) { __typename }}}}"},
+    ]},
+    update: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryCSPMResourceScanGroup @cascade { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin]}}) { __typename }}}}"},
+    ]},
+     delete:
+        { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+    )
+    {
+    id: String! @id
+    resourceId: String  @search(by: [exact, regexp])
+    name: String  @search(by: [exact, regexp])
+    organization: Organization! @hasInverse(field: resources)
+    cloudAccountName: String! @search(by: [exact])
+    cloudProvider: String!  @search(by: [exact])
+    resourceType: String  @search(by: [exact, regexp])
+    childResources: [AbstractResource!] @hasInverse(field: parentResource)
+    parentResource: AbstractResource @hasInverse(field: childResources)
+    associatedResources: [AbstractResource!] @hasInverse(field: associatedResources)
+    cspmScan: CSPMScan! @hasInverse(field: associatedResourceScanGroup)
+    enrichedFindings: [EnrichedFinding!] @hasInverse(field: affectedResource)
+    applicationDeployments: [ApplicationDeployment!] @hasInverse(field: utilizedResources)
+}
+
+type NetworkResource implements AbstractResource @auth(
+    query: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryNetworkResource @cascade { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin,read]}}) { __typename }}}}"},
+{ rule: "query($groups: [String!]) { queryNetworkResource @cascade { organization { teams { roles(filter: {group: {in: $groups}, permission: {in: [admin,read]}}) { __typename }}}}}"},
+{ rule: "query($groups: [String!]) { queryNetworkResource @cascade { organization { teams { applications { roles(filter: {group: {in: $groups}, permission: {in: [admin,read]}}) { __typename }}}}}}"},
+    ]},
+    add: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryNetworkResource @cascade { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin]}}) { __typename }}}}"},
+    ]},
+    update: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryNetworkResource @cascade { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin]}}) { __typename }}}}"},
+    ]},
+     delete:
+        { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+    )
+    {
+    id: String! @id
+    resourceId: String  @search(by: [exact, regexp])
+    name: String  @search(by: [exact, regexp])
+    organization: Organization! @hasInverse(field: resources)
+    cloudAccountName: String! @search(by: [exact])
+    cloudProvider: String!  @search(by: [exact])
+    resourceType: String  @search(by: [exact, regexp])
+    childResources: [AbstractResource!] @hasInverse(field: parentResource)
+    parentResource: AbstractResource @hasInverse(field: childResources)
+    associatedResources: [AbstractResource!] @hasInverse(field: associatedResources)
+    details: String
+    enrichedFindings: [EnrichedFinding!] @hasInverse(field: affectedResource)
+    applicationDeployments: [ApplicationDeployment!] @hasInverse(field: utilizedResources)
+    networkResourceType: String! @search(by: [exact, regexp]) #switch, router, firewall
+    cidr: String @search(by: [exact, regexp])
+    networkInterface: [NetworkResource!] @hasInverse(field: networkInterface)
+    ingress: [FirewallRules!] #firewall
+    egress: [FirewallRules!] #firewall
+    routingTable: [Route!] #router/switch
+}
+
+type Route {
+    source: [RouteEntry!]
+    destination: [RouteEntry!]
+}
+
+interface NetworkEntry {
+    portRange: [String!] @search(by: [exact, regexp])
+    cidr: String! @search(by: [exact, regexp])
+    protocol: String! @search(by: [exact,regexp])
+    networkInterface: NetworkResource
+}
+
+type FirewallRules implements NetworkEntry{
+    portRange: [String!] @search(by: [exact, regexp])
+    cidr: String! @search(by: [exact, regexp])
+    protocol: String! @search(by: [exact, regexp])
+    networkInterface: NetworkResource
+    access: String! @search(by: [exact, regexp]) #allow/deny
+}
+
+type RouteEntry implements NetworkEntry{
+    portRange: [String!] @search(by: [exact, regexp])
+    cidr: String! @search(by: [exact, regexp])
+    protocol: String! @search(by: [exact, regexp])
+    networkInterface: NetworkResource
+    subnet: NetworkResource
+}
+
+
+type Resource implements AbstractResource @auth(
+    query: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryResource @cascade { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin,read]}}) { __typename }}}}"},
+{ rule: "query($groups: [String!]) { queryResource @cascade { organization { teams { roles(filter: {group: {in: $groups}, permission: {in: [admin,read]}}) { __typename }}}}}"},
+{ rule: "query($groups: [String!]) { queryResource @cascade { organization { teams { applications { roles(filter: {group: {in: $groups}, permission: {in: [admin,read]}}) { __typename }}}}}}"},
+    ]},
+    add: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryResource @cascade { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin]}}) { __typename }}}}"},
+    ]},
+    update: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryResource @cascade { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin]}}) { __typename }}}}"},
+    ]},
+     delete:
+        { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+    )
+{
+    id: String! @id
+    resourceId: String  @search(by: [exact, regexp])
+    name: String  @search(by: [exact, regexp])
+    organization: Organization! @hasInverse(field: resources)
+    cloudAccountName: String! @search(by: [exact])
+    cloudProvider: String!  @search(by: [exact])
+    resourceType: String  @search(by: [exact, regexp])
+    childResources: [AbstractResource!] @hasInverse(field: parentResource)
+    parentResource: AbstractResource @hasInverse(field: childResources)
+    associatedResources: [AbstractResource!] @hasInverse(field: associatedResources)
+    details: String
+    enrichedFindings: [EnrichedFinding!] @hasInverse(field: affectedResource)
+    applicationDeployments: [ApplicationDeployment!] @hasInverse(field: utilizedResources)
+}
+
+type EnrichedFinding  {
+    id: String! @id
+    affectedResource: AbstractResource @hasInverse(field: enrichedFindings)
+    finding:  PolicyEvaluationData @hasInverse(field: enrichedAffectedResources)
+    affectedAttributes: String  @search(by: [exact, regexp])
+    timestamp: DateTime! @search
+    affected: Boolean! @search
+    scanData: CSPMScan
+}
+
+enum ScanStatus{
+    runnning
+    aborted
+    completed
+}
+
+type CSPMScan implements Scan {
+    id: String! @id
+    status: String @search(by:[exact])
+    detailedStatus: String
+    category: String @search(by: [exact,regexp])
+    tag: String @search(by: [exact,regexp])
+    createdAt: DateTime @search
+    updatedAt: DateTime @search
+    associatedResourceScanGroup: [CSPMResourceScanGroup!] @hasInverse(field: cspmScan)
+}
+
+
+type Project
+@auth(
+    query: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryProject @cascade { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin,adhoc_create_delete,adhoc_update,adhoc_trigger_scan,read]}}) { __typename }}}}"},
+{ rule: "query($groups: [String!]) { queryProject @cascade { team { roles(filter: {group: {in: $groups}, permission: {in: [admin,adhoc_create_delete,adhoc_update,adhoc_trigger_scan,read]}}) { __typename }}}}"},
+        ]
+    },
+    add: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryProject @cascade { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin,adhoc_create_delete]}}) { __typename }}}}"},
+{ rule: "query($groups: [String!]) { queryProject @cascade { team { roles(filter: {group: {in: $groups}, permission: {in: [admin,adhoc_create_delete]}}) { __typename }}}}"},
+        ]
+    },
+    update: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryProject @cascade { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin,adhoc_create_delete,adhoc_update]}}) { __typename }}}}"},
+{ rule: "query($groups: [String!]) { queryProject @cascade { team { roles(filter: {group: {in: $groups}, permission: {in: [admin,adhoc_create_delete,adhoc_update]}}) { __typename }}}}"},
+        ]
+    },
+    delete: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryProject @cascade { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin,adhoc_create_delete]}}) { __typename }}}}"},
+{ rule: "query($groups: [String!]) { queryProject @cascade { team { roles(filter: {group: {in: $groups}, permission: {in: [admin,adhoc_create_delete]}}) { __typename }}}}"},
+        ]
+    })
+ {
+    id: ID!
+    name: String! @search(by:[exact,regexp])
+    platform: String @search(by:[exact,regexp])
+    organization: Organization! @hasInverse(field: projects)
+    team: Team @hasInverse(field: projects)
+    scanType: String @search(by: [exact,regexp])
+    scanlevel: String @search(by: [exact,regexp])
+    createdAt: DateTime! @search
+    updatedAt: DateTime! @search
+    projectConfigs: [ProjectConfig!] @hasInverse(field: project)
+    integratorConfigs: [IntegratorConfigs!] @hasInverse(field: project)
+    policies: [PolicyDefinition!] @hasInverse(field: ownerProject)
+    policyEnforcements: [PolicyEnforcement!] @hasInverse(field: enforcedProject)
+    scans: [ScanTarget!] @hasInverse(field: projects)
+    type: String @search(by: [exact,regexp])
+    riskStatus: RiskStatus @search(by: [exact,regexp])
+    level: String @search(by: [exact,regexp])
+    reportSubscriptions: [ReportSubscriptionAffects!] @hasInverse(field: project)
+    error: String
+}
+
+type ProjectConfig
+@auth(
+    query: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryProjectConfig @cascade { project { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin,adhoc_create_delete,adhoc_update,adhoc_trigger_scan,read]}}) { __typename }}}}}"},
+{ rule: "query($groups: [String!]) { queryProjectConfig @cascade { project { team { roles(filter: {group: {in: $groups}, permission: {in: [admin,adhoc_create_delete,adhoc_update,adhoc_trigger_scan,read]}}) { __typename }}}}}"},
+        ]
+    },
+    add: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryProjectConfig @cascade { project { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin,adhoc_create_delete,adhoc_update]}}) { __typename }}}}}"},
+{ rule: "query($groups: [String!]) { queryProjectConfig @cascade { project { team { roles(filter: {group: {in: $groups}, permission: {in: [admin,adhoc_create_delete,adhoc_update]}}) { __typename }}}}}"},
+        ]
+    },
+    update: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryProjectConfig @cascade { project { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin,adhoc_create_delete,adhoc_update]}}) { __typename }}}}}"},
+{ rule: "query($groups: [String!]) { queryProjectConfig @cascade { project { team { roles(filter: {group: {in: $groups}, permission: {in: [admin,adhoc_create_delete,adhoc_update]}}) { __typename }}}}}"},
+        ]
+    },
+    delete: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryProjectConfig @cascade { project { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin,adhoc_create_delete]}}) { __typename }}}}}"},
+{ rule: "query($groups: [String!]) { queryProjectConfig @cascade { project { team { roles(filter: {group: {in: $groups}, permission: {in: [admin,adhoc_create_delete]}}) { __typename }}}}}"},
+        ]
+    })
+{
+    id: ID!
+    organization: String @search(by:[exact,regexp])
+    repository: String @search(by:[exact,regexp])
+    branch: [String!] @search(by:[exact,regexp])
+    branchPattern: String @search(by: [exact,regexp])
+    scheduleTime: Int @search
+    scheduledScan: Boolean! @search
+    createdAt: DateTime! @search
+    updatedAt: DateTime! @search
+    project: Project! @hasInverse(field: projectConfigs)
+    integratorConfigs: [IntegratorConfigs!] @hasInverse(field: projectConfig)
+    artifactTag: [String!] @search(by:[exact,regexp])
+    artifactTagPattern: String @search(by: [exact,regexp])
+    artifactUploadUrl: String
+    scanUpto: Int @search
+    codePath: String @search(by:[exact,regexp])
+    triggeredBy: String @search(by:[exact,regexp])
+    scans: [ScanTarget] @hasInverse(field: projectConfig)
+    scmType: String @search(by: [exact,regexp])
+    scmOrganization: String @search(by: [exact,regexp])
+    model: String
+    provider: String
+    error: String @search(by:[exact])
+}
+
+type ScanTarget
+@auth(
+    query: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryScanTarget @cascade { projects { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin,adhoc_create_delete,adhoc_update,adhoc_trigger_scan,read]}}) { __typename }}}}}"},
+{ rule: "query($groups: [String!]) { queryScanTarget @cascade { projects { team { roles(filter: {group: {in: $groups}, permission: {in: [admin,adhoc_create_delete,adhoc_update,adhoc_trigger_scan,read]}}) { __typename }}}}}"},
+        ]
+    },
+    add: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryScanTarget @cascade { projects { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin]}}) { __typename }}}}}"},
+{ rule: "query($groups: [String!]) { queryScanTarget @cascade { projects { team { roles(filter: {group: {in: $groups}, permission: {in: [admin]}}) { __typename }}}}}"},
+        ]
+    },
+    update: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryScanTarget @cascade { projects { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin,adhoc_create_delete,adhoc_update,adhoc_trigger_scan]}}) { __typename }}}}}"},
+{ rule: "query($groups: [String!]) { queryScanTarget @cascade { projects { team { roles(filter: {group: {in: $groups}, permission: {in: [admin,adhoc_create_delete,adhoc_update,adhoc_trigger_scan]}}) { __typename }}}}}"},
+        ]
+    },
+    delete: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryScanTarget @cascade { projects { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin]}}) { __typename }}}}}"},
+{ rule: "query($groups: [String!]) { queryScanTarget @cascade { projects { team { roles(filter: {group: {in: $groups}, permission: {in: [admin]}}) { __typename }}}}}"},
+        ]
+    })
+{
+    id: ID!
+    "make this singular"
+    projects: [Project!] @hasInverse(field: scans)
+    organization: String @search(by:[exact,regexp])
+    repository: String @search(by:[exact,regexp])
+    branch: String @search(by:[exact,regexp])
+    artifactName: String @search(by:[exact,regexp])
+    artifactTag: String @search(by:[exact,regexp])
+    artifactSha: String @search(by:[exact,regexp])
+    lastTriggeredBy: String! @search(by:[exact,regexp])
+    lastScannedTime: DateTime! @search
+    lastAttemptedTime: DateTime! @search
+    createdAt: DateTime! @search
+    updatedAt: DateTime! @search
+    scanResults: [ScanResult!] @hasInverse(field: scanTarget)
+    artifactScanData: ArtifactScanData @hasInverse(field: scanTarget)
+    error: String @search(by: [exact,regexp])
+    riskStatus: RiskStatus @search(by: [exact,regexp])
+    codePath: String @search(by:[exact,regexp])
+    "do not use below param"
+    projectConfig: ProjectConfig @hasInverse(field: scans)
+}
+
+type ScanResult
+@auth(
+    query: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryScanResult @cascade { scanTarget { projects { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin,adhoc_create_delete,adhoc_update,adhoc_trigger_scan,read]}}) { __typename }}}}}}"},
+{ rule: "query($groups: [String!]) { queryScanResult @cascade { scanTarget { projects { team { roles(filter: {group: {in: $groups}, permission: {in: [admin,adhoc_create_delete,adhoc_update,adhoc_trigger_scan,read]}}) { __typename }}}}}}"},
+        ]
+    },
+    add: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryScanResult @cascade { scanTarget { projects { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin]}}) { __typename }}}}}}"},
+{ rule: "query($groups: [String!]) { queryScanResult @cascade { scanTarget { projects { team { roles(filter: {group: {in: $groups}, permission: {in: [admin]}}) { __typename }}}}}}"},
+        ]
+    },
+    update: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryScanResult @cascade { scanTarget { projects { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin]}}) { __typename }}}}}}"},
+{ rule: "query($groups: [String!]) { queryScanResult @cascade { scanTarget { projects { team { roles(filter: {group: {in: $groups}, permission: {in: [admin]}}) { __typename }}}}}}"},
+        ]
+    },
+    delete: {
+        or: [
+            { rule: "{$type: {eq: \"internal-account/v1\"}}" },
+{ rule: "query($groups: [String!]) { queryScanResult @cascade { scanTarget { projects { organization { roles(filter: {group: {in: $groups}, permission: {in: [admin]}}) { __typename }}}}}}"},
+{ rule: "query($groups: [String!]) { queryScanResult @cascade { scanTarget { projects { team { roles(filter: {group: {in: $groups}, permission: {in: [admin]}}) { __typename }}}}}}"},
+        ]
+    })
+{
+    id: ID!
+    group: String! @search(by:[exact,regexp])
+    headCommit: String @search(by:[exact])
+    triggerdBy: String! @search(by:[exact,regexp])
+    triggerType: String! @search(by:[exact,regexp])
+    scanType: String! @search(by:[exact])
+    resultFile: String! @search(by:[exact])
+    scanTool: String! @search(by:[exact,regexp])
+    scannedAt: DateTime! @search
+    scanDuration: DateTime! @search
+    riskStatus: RiskStatus @search(by: [exact,regexp])
+    scanTarget: ScanTarget! @hasInverse(field: scanResults)
+    error: String @search(by: [exact,regexp])
+}
+
+
+# Dgraph.Allow-Origin "http://localhost:4200"
+# Dgraph.Authorization {"VerificationKey":"","Header":"X-OpsMx-Auth","jwkurl":"http://token-machine:8050/jwk","Namespace":"ssd.opsmx.io","Algo":"","Audience":["ssd.opsmx.io"],"ClosedByDefault":false}

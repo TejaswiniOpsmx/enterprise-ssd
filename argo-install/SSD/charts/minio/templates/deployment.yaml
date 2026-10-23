@@ -1,0 +1,70 @@
+---
+# Source: SSD/charts/minio/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ssd-minio
+  labels:
+    app: minio
+    chart: minio-8.0.9
+    release: ssd
+    heritage: Helm
+spec:
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 100%
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: minio
+      release: ssd
+  template:
+    metadata:
+      name: ssd-minio
+      labels:
+        app: minio
+        release: ssd
+      annotations:
+        checksum/secrets: f1898e72a9605fc19e2bcd2bc18747580973950dabad50d714fcfb9ea7ba4aab
+        checksum/config: 6ffc79ad75ebc4d83c7448bb8b66a435853a2da00659c6dffaaa948fdf380f5f
+    spec:
+      serviceAccountName: "ssd-minio"
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: minio
+          image: "minio/minio:RELEASE.2020-12-03T05-49-24Z"
+          imagePullPolicy: IfNotPresent
+          command:
+            - "/bin/sh"
+            - "-ce"
+            - "/usr/bin/docker-entrypoint.sh minio -S /etc/minio/certs/ server /export"
+          volumeMounts:
+            - name: export
+              mountPath: /export            
+          ports:
+            - name: http
+              containerPort: 9000
+          env:
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ssd-minio
+                  key: accesskey
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ssd-minio
+                  key: secretkey
+          resources:
+            requests:
+              memory: 4Gi      
+      volumes:
+        - name: export
+          emptyDir: {}
+        - name: minio-user
+          secret:
+            secretName: ssd-minio

@@ -1,0 +1,22 @@
+# HTTP Server Configuration
+httpListenPort: 9090
+# Logging Configuration
+logLevel: info
+# Path Configurations
+scanResultPath: /app/scanResult
+tempDir: /app/temp
+aesEncryptionKeyPath: /app/secrets/ssdsecret/AESEncryptionKey
+internalTokenPath: /app/secrets/artifact-scan-token/token
+ssdPublicKeysPath: /app/ssd-public-keys
+# GraphQL Configuration
+{{- if .Values.dgraph.HA.enabled }}
+graphQLAddr: http://dgraph-alpha-public:8080
+{{- else }}
+graphQLAddr: http://dgraph-public:8080
+{{- end }}
+# Scan Configurations
+maxConcurrentScans: 5
+registryCallDelayMs: 1000
+pollIntervalSeconds: 120
+toolChainAddr: http://tool-chain:8100
+ssdUrl: {{.Values.global.ssdUI.protocol}}://{{.Values.global.ssdUI.host}}

@@ -1,0 +1,21 @@
+# HTTP Server config
+httpListenPort: 9090
+# Logging config
+logLevel: {{ .Values.sourcescan.loglevel }}
+# Path configs
+scanResultPath: /app/ScanResult
+tempDir: /app/Temp
+aesEncryptionKeyPath: /app/secrets/ssdsecret/AESEncryptionKey
+internalTokenPath: /app/secrets/source-scan-token/token
+ssdPublicKeysPath: /app/ssd-public-keys
+# GraphQL configs
+{{- if .Values.dgraph.HA.enabled }}
+graphQLAddr: http://dgraph-alpha-public:8080
+{{- else }}
+graphQLAddr: http://dgraph-public:8080
+{{- end }}
+# Scan configs
+maxConcurrentScans: {{ .Values.sourcescan.maxConcurrentScans }}
+pollIntervalSeconds: {{ .Values.sourcescan.pollIntervalSeconds }}
+toolChainAddr: http://tool-chain:8100
+ssdUrl: {{.Values.global.ssdUI.protocol}}://{{.Values.global.ssdUI.host}}

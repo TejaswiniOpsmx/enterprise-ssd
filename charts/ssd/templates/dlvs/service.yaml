@@ -1,0 +1,23 @@
+{{- if .Values.installAimlSvcs }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: dlvs
+  labels:
+    app: ssd
+    component: dlvs
+{{ include "ssd.standard-labels" . | indent 4 }}
+{{- if .Values.dlvs.serviceAnnotations }}
+  annotations:
+{{ toYaml .Values.dlvs.serviceAnnotations | indent 4 }}
+{{- end }}
+spec:
+  ports:
+    - name: api
+      protocol: TCP
+      port: 5000
+      targetPort: 5000
+  selector:
+    app: ssd
+    component: dlvs
+{{- end }}

@@ -1,0 +1,102 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prism-iac
+  labels:
+    app: ssd
+    component: prism-iac
+{{ include "ssd.standard-labels" . | indent 4 }}
+spec:
+  replicas: {{ .Values.prismiac.replicaCount }}
+  selector:
+    matchLabels:
+      app: ssd
+      component: prism-iac
+  template:
+    metadata:
+      labels:
+        app: ssd
+        component: prism-iac
+{{- if .Values.customLabels }}
+{{ toYaml .Values.customLabels | indent 8}}
+{{- end }}
+      annotations:
+{{- if .Values.prismiac.annotations -}}
+        {{ toYaml .Values.prismiac.annotations | nindent 8 }}
+{{- end }}
+    spec:
+      containers:
+      - name: prism-iac
+        image: {{ template "prismiac.image" . }}
+        ports:
+          - containerPort: 8400
+            protocol: TCP
+        volumeMounts:
+        - name: prism-iac-volume
+          mountPath: /app/config/prism-iac.yaml
+          subPath: prism-iac.yaml
+        - name: ssd-public-keys
+          mountPath: /app/ssd-public-keys
+        - name: ssdsecret
+          readOnly: true
+          mountPath: /app/secrets/
+        - name: token
+          readOnly: true
+          mountPath: /app/secrets/prism-iac-token/
+        {{- with .Values.prismiac.probes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.prismiac.resources }}
+      resources:
+      {{- toYaml . | nindent 10 }}
+      {{- end }}
+      {{- if .Values.prismiac.securityContext }}
+      securityContext:
+      {{ toYaml .Values.prismiac.securityContext | nindent 10 }}
+      {{- else }}
+      securityContext: {{ default "{}" }}
+      {{- end }}
+      volumes:
+        - name: prism-iac-volume
+          configMap:
+            name: prism-iac
+            items:
+              - key: prism-iac.yaml
+                path: prism-iac.yaml
+            defaultMode: 420
+        - name: ssd-public-keys
+          configMap:
+            name: ssd-public-keys
+            defaultMode: 420
+        - name: ssdsecret
+          secret:
+            secretName: ssdsecret
+            items:
+              - key: AESEncryptionKey
+                path: ssdsecret/AESEncryptionKey
+            defaultMode: 420  
+        - name: token
+          secret:
+            secretName: prism-iac-token
+            defaultMode: 420
+      {{- if .Values.imagePullSecret }}
+      imagePullSecrets:
+      - name: {{ .Values.imagePullSecret }}
+      {{- end }}
+      restartPolicy: Always
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

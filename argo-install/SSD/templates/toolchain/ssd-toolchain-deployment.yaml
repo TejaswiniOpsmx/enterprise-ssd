@@ -1,0 +1,79 @@
+---
+# Source: SSD/templates/toolchain/ssd-toolchain-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: oes
+    component: oes-toolchain
+    heritage: "Helm"
+    release: "ssd"
+    chart: "SSD-4.0.9"
+  name: tool-chain
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: oes
+      component: oes-toolchain
+  template:
+    metadata:
+      labels:
+        app: oes
+        component: oes-toolchain
+        heritage: "Helm"
+        release: "ssd"
+        chart: "SSD-4.0.9"
+      annotations:
+        moniker.spinnaker.io/application: isd
+    spec:
+      containers:
+        - name: tool-chain
+          image: genos1998/tool-chain:v125
+          ports:
+            - containerPort: 8100
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /var/run
+              name: docker-sock
+            - name: scanresult
+              mountPath: /tools/scanResult
+            - name: tool-chain-volume
+              mountPath: /tools/config/tool-chain.yaml
+              subPath: tool-chain.yaml
+          readinessProbe:
+            failureThreshold: 6
+            httpGet:
+              path: /health
+              port: 8100
+              scheme: HTTP
+            periodSeconds: 20
+            successThreshold: 1
+            timeoutSeconds: 1
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+      volumes:
+        - name: scanresult
+          emptyDir: {}
+        - name: docker-sock
+          hostPath:
+            path: /var/run
+            type: ""
+        - name: tool-chain-volume
+          configMap:
+            name: tool-chain
+            items:
+              - key: tool-chain.yaml
+                path: tool-chain.yaml
+            defaultMode: 420
+      restartPolicy: Always
+      securityContext: {}

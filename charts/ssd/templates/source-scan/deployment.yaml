@@ -1,0 +1,167 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: source-scan
+  labels:
+    app: ssd
+    component: source-scan
+{{ include "ssd.standard-labels" . | indent 4 }}
+spec:
+  replicas: {{ .Values.sourcescan.replicaCount }}
+  selector:
+    matchLabels:
+      app: ssd
+      component: source-scan
+  template:
+    metadata:
+      labels:
+        app: ssd
+        component: source-scan
+{{- if .Values.customLabels }}
+{{ toYaml .Values.customLabels | indent 8}}
+{{- end }}
+      annotations:
+        checksum/configmap: {{ include (print $.Template.BasePath "/source-scan/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/project-monitor/project-monitor-secret.yaml") . | sha256sum }}
+{{- if .Values.sourcescan.annotations -}}
+        {{ toYaml .Values.sourcescan.annotations | nindent 8 }}
+{{- end }}
+    spec:
+      containers:
+        - name: source-scan
+          image: {{ template "sourcescan.image" . }}
+          env:
+          - name: RABBITMQ_HOST
+            value: rabbitmq-service
+          - name: RABBITMQ_PORT
+            value: "5672"
+          - name: RABBITMQ_USERNAME
+            valueFrom:
+              secretKeyRef:
+                key: username
+                name: rabbitmq-secret
+          - name: RABBITMQ_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                key: password
+                name: rabbitmq-secret
+          - name: REDIS_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: redis-secret
+                key: password
+          - name: OAUTH_BRIDGE_PRIVATE_KEY
+            valueFrom:
+              secretKeyRef:
+                key: oauth-private-key
+                name: oauth-bridge-client-secrets
+                optional: true
+          envFrom:
+            - configMapRef:
+                name: oauth-bridge-client-config
+            - configMapRef:
+                name: ssd-audit-emitter-config
+          volumeMounts:
+            - name: ssd-public-keys
+              mountPath: /app/ssd-public-keys
+            - name: ssdsecret
+              readOnly: true
+              mountPath: /app/secrets/
+            - name: scanresult
+              mountPath: /app/scanResult
+            - name: scan-config
+              mountPath: /app/config/source-scan.yaml
+              subPath: source-scan.yaml
+            - name: custom-certs
+              mountPath: /usr/local/share/ca-certificates
+            - name: token
+              readOnly: true
+              mountPath: /app/secrets/source-scan-token
+            - name: tempdir
+              mountPath: /app/temp
+            - mountPath: /app/app-config.yaml
+              name: project-monitor-queue
+              subPath: app-config.yaml
+          {{- with .Values.sourcescan.resources }}
+          resources:
+          {{ toYaml . | nindent 12 }}
+          {{- end }}
+          securityContext:
+      {{- if .Values.sourcescan.securityContext }}
+      {{ toYaml .Values.sourcescan.securityContext | nindent 12 }}
+      {{- end }}
+{{ include "otel.sidecar.container" . | indent 8 }}
+      volumes:
+        - name: ssdsecret
+          secret:
+            secretName: ssdsecret
+            items:
+              - key: AESEncryptionKey
+                path: ssdsecret/AESEncryptionKey
+            defaultMode: 420
+        - name: ssd-proxy-certs
+          configMap:
+            name: ssd-proxy-certs
+            defaultMode: 420
+            optional: true
+        - name: custom-certs
+          configMap:
+            name: customer-custon-ca
+            items:
+              - key: ca.crt
+                path: ca.crt
+            defaultMode: 420
+            optional: true
+        - name: ssd-public-keys
+          configMap:
+            name: ssd-public-keys
+            defaultMode: 420
+        - name: token
+          secret:
+            optional: true
+            secretName: source-scan-token
+        - name: scanresult
+          emptyDir: {}
+        - name: tempdir
+          emptyDir: {}
+        - name: logs
+          emptyDir: {}
+        - name: scan-config
+          configMap:
+            name: source-scan-config
+            items:
+              - key: source-scan.yaml
+                path: source-scan.yaml
+            defaultMode: 420
+        - name: project-monitor-queue
+          secret:
+            defaultMode: 420
+            items:
+            - key: app-config.yaml
+              path: app-config.yaml
+            secretName: project-monitor
+        - name: otel-sidecar-volume
+          configMap:
+            name: otel-sidecar-config
+            defaultMode: 420
+      {{- if .Values.imagePullSecret }}
+      imagePullSecrets:
+      - name: {{ .Values.imagePullSecret }}
+      {{- end }}
+      restartPolicy: Always
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

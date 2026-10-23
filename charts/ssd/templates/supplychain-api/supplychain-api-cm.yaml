@@ -1,0 +1,13 @@
+apiVersion: v1
+data:
+  ssd-integrations.yaml: |
+    {{- tpl (.Files.Get "config/supplychain-api/ssd-integrations.yaml") . | nindent 4 }}
+  ssd-whitelist.yaml: |
+    {{- toYaml .Values.supplychainapi.whitelist_Urls | nindent 4 }}
+kind: ConfigMap
+metadata:
+  name: supplychain-api-cm
+  labels:
+    app: ssd
+    component: supplychain-api
+{{ include "ssd.standard-labels" . | indent 4 }}

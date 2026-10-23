@@ -1,0 +1,61 @@
+---
+# Source: SSD/templates/ssd-gate/services-config.yaml
+apiVersion: v1
+data:
+  services-config.yaml: |
+    # Backend services to route the calls to. Routes are processed in the order provided here
+    # All routed configured can be viewed in the browser at the /showroutes endpoint
+    # The 3 routes below are optional, they are filled in automatically if nothing is specified
+    # services:   # OPTIONAL default backends are programmed in. If specified ALL backends including these MUST be included
+    - name: supplychain-api  # Name
+      path_prefixes:
+      - "/ssdservice"        # incoming calls are routed based on this. Processed in Order i.e. we can have multiple of these going to the same backend
+      baseUrl: supplychain-api:8099
+      #disabled: false          # Default false, set this to true to temporarily disable a service
+      #scheme: http           # Default http. If the Backend is httpS, please set it
+      #streaming: false # Default is false. set this if we have a streaming backend e.g. a service that returns results of a DB-query
+      #auth_required: true # Default false. Note that if the backend does not need auth i.e it will not get the user who requested this
+      #strip_prefix: false  # Default false. If true, the path_prefix is removed before sending to backend. Best is to use only ONE path_prefix
+      health_endpoint: /healthz # Default, change only if required
+      log_traffic: true
+    - name: rabbitmq
+      path_prefixes:
+      - "/rabbit"
+      baseUrl: rabbitmq-service:15672
+      health_endpoint: /
+      strip_prefix: true
+    - name: ssd-opa
+      path_prefixes:
+      - "/ssd-opa"
+      baseUrl: ssd-opa:8200
+      health_endpoint: /health
+      strip_prefix: true
+      log_traffic: true
+    - name: supplychain-api
+      baseUrl: tool-chain:8100
+      health_endpoint: /health
+    - name: supplychain-preprocessor
+      baseUrl: supplychain-preprocessor:8058
+      health_endpoint: /healthz
+    - name: tool-chain
+      baseUrl: tool-chain:8100
+      health_endpoint: /health
+    - name: dgraph
+      baseUrl: dgraph-public:8000
+      health_endpoint: /
+    - name: oes-ui
+      baseUrl: oes-ui:8080
+      health_endpoint: "/ui/index.html"
+    - name: ssd-minio 
+      baseUrl: ssd-minio:9000
+      health_endpoint: ""
+    
+kind: ConfigMap
+metadata:
+  name: services-config
+  labels:
+    app: ssd
+    component: gate
+    heritage: "Helm"
+    release: "ssd"
+    chart: "SSD-4.0.9"

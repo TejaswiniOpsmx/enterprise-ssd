@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: token-machine
+  labels:
+    app: ssd
+    component: token-machine
+{{ include "ssd.standard-labels" . | indent 4 }}
+{{- if .Values.tokenmachine.serviceAnnotations }}
+  annotations:
+{{ toYaml .Values.tokenmachine.serviceAnnotations | indent 4 }}
+{{- end }}
+spec:
+  ports:
+    - name: token-machine
+      protocol: TCP
+      port: 8050
+      targetPort: 8050
+      {{- if eq .Values.k8sServiceType "NodePort" }}
+      nodePort: 8050
+      {{- end }}
+  selector:
+    app: ssd
+    component: token-machine

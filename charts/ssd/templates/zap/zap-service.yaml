@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: ssd
+    component: zap
+{{ include "ssd.standard-labels" . | indent 4 }}
+{{- if .Values.zap.serviceAnnotations }}
+  annotations:
+{{ toYaml .Values.zap.serviceAnnotations | indent 4 }}
+{{- end }}
+  name: zap-service
+spec:
+  ports:
+  - protocol: TCP
+    port: 8080
+    targetPort: 8080
+    {{- if eq .Values.k8sServiceType "NodePort" }}
+    nodePort: 8080
+    {{- end }}
+  selector:
+    app: ssd
+    component: zap

@@ -1,0 +1,138 @@
+---
+# Source: SSD/templates/ssd-gate/ssd-gate-deploy.yaml
+# Deployment YAML for ssd-gate
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: ssd
+    component: gate
+  name: ssd-gate
+spec:
+  selector:
+    matchLabels:
+      app: ssd
+      component: ssd-gate
+  template:
+    metadata:
+      labels:
+        app: ssd
+        component: ssd-gate
+    spec:
+      containers:
+      - args:
+        - /app/ssdgate
+        - -configFile=/app/config/ssd-gate-config.yaml
+        - -unsafe=false                                 # set to true during initial configuration, not required in production
+        image: ksrinimba/ssdgate:latest   # Replace with quay.io image
+        #imagePullPolicy: Always
+        name: ssd-gate
+        ports:
+        - containerPort: 8001
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 6
+          httpGet:
+            path: /healthz
+            port: 8001
+            scheme: HTTP
+          periodSeconds: 20
+          successThreshold: 1
+          timeoutSeconds: 1
+        envFrom:
+        - secretRef:
+            name: poc-passwords 
+        resources: {}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+          runAsGroup: 1000
+          seccompProfile:
+            type: RuntimeDefault
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /app/config # This is the emptyDir where the processed configs are placed
+          name: config-home
+        - mountPath: /app/services # this is where we expect to find the default services-config.yaml
+          name: services-config
+        - mountPath: /app/saml   # Any saml-authenticator specific files go here. this is option
+          name: saml-files
+        - mountPath: /usr/local/share/ca-certificates
+          name: custom-certs 
+      initContainers:
+      - command:
+        - sh
+        - /tmp/decoder/secret-decoder.sh # Replace secrets with the values from k8s secrets, use another script for vault, AWS-secrets, etc.
+        - /tmp/config  # source
+        - /app  # Destination
+        image: quay.io/opsmxpublic/k8s-decoder:hal
+        imagePullPolicy: IfNotPresent
+        name: replace-secrets
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /tmp/decoder  # secret decoder script
+          name: secret-decoder
+        - mountPath: /tmp/config   # mount point of the config, with secrets referred to as "encrypted:SECRET-NAME:KEY-NAME"
+          name: ssd-gate-config
+        - mountPath: /app/config   # emptyDir where the files with secrets replaced with correct values will be placed
+          name: config-home
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - emptyDir: {}              # Mounted on /app/config
+        name: config-home
+      - configMap:                # Mounted on /tmp/config, that has secrets replaced and placed in /app/config
+          defaultMode: 420
+          name: ssd-gate-config
+          optional: true
+        name: ssd-gate-config
+      - configMap:                # Mounted on /tmp/config, that has secrets replaced and placed in /app/config
+          defaultMode: 420
+          name: services-config
+          optional: true
+        name: services-config
+      - configMap:                # Script for secret replacement, use "encrypted:SECRETE-NAME:KEY" for value, key should be same as the secret-name
+          defaultMode: 420
+          name: secret-decoder
+          optional: true
+        name: secret-decoder
+      - configMap:                # Templates for static content with variable values
+          defaultMode: 420
+          name: ssd-gate-templates
+          optional: true
+        name: ssd-gate-templates
+      - name: custom-certs  # Optional: In case we are using any customer-specific custom CAs
+        configMap:
+          defaultMode: 420
+          items:
+          - key: ca.crt
+            path: ca.crt
+          optional: true             
+          name: customer-custon-ca
+      - name: saml-files         # Optional: for SAML metadata.xml, certificate and key (required for Signed assertion)
+        secret:
+          defaultMode: 420
+          items:
+          - key: certificate.crt
+            path: certificate.crt
+          - key: certificate.crt
+            path: private.key         # Only key is a secret
+          - key: metadata.xml
+            path: metadata.xml        #e.g. Specify /app/saml/metadata.xml ssd-gate-config.yaml
+          optional: true             
+          secretName: saml-files
+      - name: poc-passwords         # Can be deleted after Authentication has been configured, this is for POC/start up only
+        secret:
+          defaultMode: 420
+          optional: true             
+          secretName: poc-passwords

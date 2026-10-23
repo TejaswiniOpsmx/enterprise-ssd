@@ -1,0 +1,20 @@
+---
+# Source: SSD/templates/ssd-gate/ssd-gate-svc.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: ssd
+    component: ssd-gate
+  name: ssd-gate
+spec:
+  ports:
+  - name: ssd-gate
+    port: 8084
+    protocol: TCP
+    targetPort: 8001
+  selector:
+    app: ssd
+    component: ssd-gate
+  sessionAffinity: None
+  type: ClusterIP

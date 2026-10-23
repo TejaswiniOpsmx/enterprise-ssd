@@ -1,0 +1,157 @@
+{{- if .Values.installAimlSvcs }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aishield
+  labels:
+    app: ssd
+    component: aishield
+{{ include "ssd.standard-labels" . | indent 4 }}
+spec:
+  replicas: {{ .Values.aishield.replicaCount }}
+  selector:
+    matchLabels:
+      app: ssd
+      component: aishield
+  template:
+    metadata:
+      labels:
+        app: ssd
+        component: aishield
+{{- if .Values.customLabels }}
+{{ toYaml .Values.customLabels | indent 8}}
+{{- end }}
+      annotations:
+{{- if .Values.aishield.annotations -}}
+        {{ toYaml .Values.aishield.annotations | nindent 8 }}
+{{- end }}
+    spec:
+      containers:
+        - name: aishield
+          image: {{ template "aishield.image" . }}
+          ports:
+            - name: gateway
+              containerPort: 8080
+              protocol: TCP
+            - name: api
+              containerPort: 8090
+              protocol: TCP
+          env:
+          - name: TEMPORAL_HOSTPORT
+            value: {{ .Release.Name }}-temporal-frontend:7233
+          {{- if .Values.minio.enabled }}
+          - name: S3_ENDPOINT_URL
+            value: http://{{ .Release.Name }}-minio:9000
+          {{- else }}
+          - name: S3_ENDPOINT_URL
+            value: {{ .Values.s3bucketurl }}
+          - name: S3_Region
+            value: {{ .Values.s3region }}
+          {{- end }}
+          {{- if .Values.minio.enabled }}
+          - name: AWS_ACCESS_KEY_ID
+            valueFrom:
+              secretKeyRef:
+                key: username
+                name: minio-secret
+          - name: AWS_SECRET_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                key: password
+                name: minio-secret
+          {{- else }}
+          - name: AWS_ACCESS_KEY_ID
+            valueFrom:
+              secretKeyRef:
+                key: accesskey
+                name: ssd-storage-secret
+          - name: AWS_SECRET_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                key: secretkey
+                name: ssd-storage-secret
+          {{- end }}
+          - name: Cypher_Key
+            valueFrom:
+              secretKeyRef:
+                key: AESEncryptionKey
+                name: ssdsecret
+          - name: GRAPHQL_URL
+            value: http://dgraph-public:8080/graphql
+          - name: OPA_HOSTPORT
+            value: http://ssd-opa:8200
+          - name: TOOLCHAIN_HOSTPORT
+            value: http://tool-chain:8100
+          - name: DLVS_HOSTPORT
+            value: http://dlvs:5000
+          - name: REDIS_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: redis-secret
+                key: password
+          - name: AUDIT_ENABLE
+            value: enable
+          - name: REDIS_HOST
+            value: {{ .Release.Name }}-redis-master
+          volumeMounts:
+            - name: ssd-public-keys
+              mountPath: /tools/ssd-public-keys
+            - name: config
+              mountPath: /config.yaml
+              subPath: config.yaml
+            - name: custom-certs
+              mountPath: /usr/local/share/ca-certificates
+            - name: token
+              readOnly: true
+              mountPath: /tools/secrets/aishield
+          {{- with .Values.aishield.resources }}
+          resources:
+          {{ toYaml . | nindent 12 }}
+          {{- end }}
+          securityContext:
+      {{- if .Values.aishield.securityContext }}
+      {{ toYaml .Values.aishield.securityContext | nindent 12 }}
+      {{- end }}
+      volumes:
+        - name: custom-certs
+          configMap:
+            name: customer-custom-ca
+            items:
+              - key: ca.crt
+                path: ca.crt
+            defaultMode: 420
+            optional: true
+        - name: ssd-public-keys
+          configMap:
+            name: ssd-public-keys
+            defaultMode: 420
+        - name: token
+          secret:
+            optional: true
+            secretName: aishield-token
+        - name: config
+          configMap:
+            name: aishield-config
+            defaultMode: 420
+      {{- if .Values.imagePullSecret }}
+      imagePullSecrets:
+      - name: {{ .Values.imagePullSecret }}
+      {{- end }}
+      restartPolicy: Always
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

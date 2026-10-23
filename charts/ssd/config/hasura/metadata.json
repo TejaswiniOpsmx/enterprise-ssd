@@ -1,0 +1,162 @@
+{
+  "type": "replace_metadata",
+  "args": {
+    "resource_version": 6,
+    "metadata": {
+      "version": 3,
+      "sources": [
+        {
+          "name": "default",
+          "kind": "postgres",
+          "tables": [
+            {
+              "table": {
+                "name": "audit_events",
+                "schema": "public"
+              },
+              "object_relationships": [
+                {
+                  "name": "user",
+                  "using": {
+                    "foreign_key_constraint_on": "user_id"
+                  }
+                }
+              ],
+              "select_permissions": [
+                {
+                  "role": "read_admin",
+                  "permission": {
+                    "columns": [
+                      "user_id",
+                      "details",
+                      "environment_id",
+                      "event_name",
+                      "event_type",
+                      "message",
+                      "service",
+                      "status",
+                      "team_id",
+                      "org_id",
+                      "track_id",
+                      "timestamp",
+                      "id"
+                    ],
+                    "filter": {},
+                    "allow_aggregations": true
+                  },
+                  "comment": ""
+                },
+                {
+                  "role": "user",
+                  "permission": {
+                    "columns": [
+                      "id",
+                      "timestamp",
+                      "track_id",
+                      "event_type",
+                      "event_name",
+                      "service",
+                      "user_id",
+                      "team_id",
+                      "org_id",
+                      "environment_id",
+                      "message",
+                      "details",
+                      "status"
+                    ],
+                    "allow_aggregations": true,
+                    "filter": {
+                      "_or": [
+                        {
+                          "team_id": {
+                            "_in": "X-Hasura-Allowed-Teams"
+                          }
+                        },
+                        {
+                          "_and": [
+                            {
+                              "team_id": {
+                                "_is_null": true
+                              }
+                            },
+                            {
+                              "org_id": {
+                                "_eq": "X-Hasura-Org-Id"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "table": {
+                "name": "users",
+                "schema": "public"
+              },
+              "array_relationships": [
+                {
+                  "name": "audit_events",
+                  "using": {
+                    "foreign_key_constraint_on": {
+                      "column": "user_id",
+                      "table": {
+                        "name": "audit_events",
+                        "schema": "public"
+                      }
+                    }
+                  }
+                }
+              ],
+              "select_permissions": [
+                {
+                  "role": "read_admin",
+                  "permission": {
+                    "columns": [
+                      "id",
+                      "full_name",
+                      "created_at",
+                      "updated_at",
+                      "username"
+                    ],
+                    "filter": {},
+                    "allow_aggregations": true
+                  },
+                  "comment": ""
+                }
+              ]
+            }
+          ],
+          "configuration": {
+            "connection_info": {
+              "database_url": {
+                "from_env": "HASURA_GRAPHQL_DATABASE_URL"
+              },
+              "isolation_level": "read-committed",
+              "use_prepared_statements": false
+            }
+          }
+        }
+      ],
+      "query_collections": [
+        {
+          "name": "allowed-queries",
+          "definition": {
+            "queries": []
+          }
+        }
+      ],
+      "allowlist": [
+        {
+          "collection": "allowed-queries",
+          "scope": {
+            "global": true
+          }
+        }
+      ]
+    }
+  }
+}

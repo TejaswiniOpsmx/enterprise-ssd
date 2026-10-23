@@ -1,0 +1,27 @@
+{{- if .Values.installAimlSvcs }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: aishield
+  labels:
+    app: ssd
+    component: aishield
+{{ include "ssd.standard-labels" . | indent 4 }}
+{{- if .Values.aishield.serviceAnnotations }}
+  annotations:
+{{ toYaml .Values.aishield.serviceAnnotations | indent 4 }}
+{{- end }}
+spec:
+  ports:
+    - name: gateway
+      protocol: TCP
+      port: 8080
+      targetPort: 8080
+    - name: api
+      protocol: TCP
+      port: 8090
+      targetPort: 8090
+  selector:
+    app: ssd
+    component: aishield
+{{- end }}

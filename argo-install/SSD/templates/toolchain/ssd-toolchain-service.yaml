@@ -1,0 +1,21 @@
+---
+# Source: SSD/templates/toolchain/ssd-toolchain-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: tool-chain
+  labels:
+    app: oes
+    component: oes-toolchain
+    heritage: "Helm"
+    release: "ssd"
+    chart: "SSD-4.0.9"
+spec:
+  ports:
+    - name: tool-chain
+      protocol: TCP
+      port: 8100
+      targetPort: 8100
+  selector:
+    app: oes
+    component: oes-toolchain

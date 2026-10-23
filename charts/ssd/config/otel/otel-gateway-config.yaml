@@ -1,0 +1,117 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+processors:
+  batch:
+  batch/raw:
+  batch/aggregate:
+  metricstransform/rename:
+    transforms:
+      - include: "^ssd\\.(.*)$"
+        match_type: regexp
+        action: insert
+        new_name: ssd.aggregate.$${1}
+  metricstransform/aggregate:
+    transforms:
+      - include: "^ssd\\..*$"
+        match_type: regexp
+        action: update
+        operations:
+          - action: aggregate_labels
+            label_set: ["ssd.workflow.type","k8s.deployment.name","k8s.namespace.name"]
+            aggregation_type: sum
+  resource/remove_label:
+    attributes:
+      - key: "k8s.pod.ip"
+        action: delete
+      - key: "k8s.pod.name"
+        action: delete
+      - key: "pipeline"
+        action: insert
+        value: "aggregator"
+  transform/remove_label:
+    metric_statements:
+      - context: datapoint
+        statements:
+          - 'delete_key(attributes, "k8s.pod.ip")'
+          - 'delete_key(attributes, "k8s.pod.name")'
+  groupbyattrs/aggregate:
+    keys:
+      - "k8s.deployment.name"
+      - "k8s.namespace.name"
+  filter/aggregate:
+    metrics:
+      include:
+        match_type: regexp
+        metric_names:
+          - "^ssd\\.aggregate\\..*"
+  k8sattributes/raw:
+    auth_type: serviceAccount  # Allows access to the Kubernetes API
+    passthrough: false
+    extract:
+      metadata:
+        - k8s.deployment.name
+        - k8s.namespace.name
+        - k8s.pod.name
+    pod_association:
+      - sources:
+        - from: connection
+  k8sattributes/aggregate:
+    auth_type: serviceAccount  # Allows access to the Kubernetes API
+    passthrough: false
+    extract:
+      metadata:
+        - k8s.deployment.name
+        - k8s.namespace.name
+        - k8s.pod.name
+    pod_association:
+      - sources:
+        - from: connection
+
+exporters:
+  debug:
+    verbosity: detailed
+  prometheus:
+    endpoint: "0.0.0.0:9464"
+    enable_open_metrics: true
+    metric_expiration: 5m
+    resource_to_telemetry_conversion:
+      enabled: true
+  elasticsearch:
+    endpoints: [{{ .Values.elasticsearchUrl | quote }}]
+    logs_index: "{{ .Release.Namespace }}" # replace it withh namespace value, should be done during helm install setup
+    tls:
+      insecure: true
+    auth:
+      authenticator: basicauth/es
+    mapping:
+      mode: ecs
+extensions:
+  basicauth/es:
+    client_auth:
+      username:
+      password:
+
+service:
+  extensions: [basicauth/es]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch/raw]
+      exporters: [debug]
+    metrics/raw:
+      receivers: [otlp]
+      processors: [k8sattributes/raw,batch/raw]
+      exporters: [debug, prometheus]
+    metrics/aggregate:
+      receivers: [otlp]
+      processors: [k8sattributes/aggregate,metricstransform/aggregate,metricstransform/rename,resource/remove_label,filter/aggregate,batch/aggregate]
+      exporters: [debug, prometheus]
+    logs:
+      receivers: [otlp]
+      processors: [k8sattributes/aggregate,batch]
+      exporters: [elasticsearch]

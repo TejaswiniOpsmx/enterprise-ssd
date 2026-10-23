@@ -1,0 +1,38 @@
+#####################################################
+# This is a minimal configuration needed for SSD Installation
+# Using builtin poc login
+#####################################################
+
+RabbitServiceType: NodePort
+
+global:
+  oesUI:
+    protocol: http
+    host: localhost
+    port: 8080
+
+
+noPvc: true
+minio:
+  mode: standalone
+  persistence:
+    enabled: false
+ssdgate:
+  installDex: false
+  createGateDexSecret: false
+  auth_type: poclogin
+
+# All Deployments/pods/Sts will have these labels
+customLabels:
+  ssd.admissionreview.accountname: dev
+  ssd.admissionreview.appname: ssdmar
+
+# If using AWS LB these annotations can be provided
+ui:
+  serviceAnnotations:
+    service.beta.kubernetes.io/aws-load-balancer-internal: true
+    service.beta.kubernetes.io/aws-load-balancer-ssl-ports: 443
+rabbitmq:
+  serviceAnnotations:
+    service.beta.kubernetes.io/aws-load-balancer-internal: true
+    service.beta.kubernetes.io/aws-load-balancer-ssl-ports: 443

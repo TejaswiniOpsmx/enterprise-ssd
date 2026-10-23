@@ -1,0 +1,259 @@
+# Deployment YAML for ssd-gate
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: ssd
+    component: gate
+{{ include "ssd.standard-labels" . | indent 4 }}
+  name: ssd-gate
+spec:
+  replicas: {{ .Values.ssdgate.replicaCount }}
+  selector:
+    matchLabels:
+      app: ssd
+      component: gate
+  template:
+    metadata:
+      labels:
+        app: ssd
+        component: gate
+{{- if .Values.customLabels }}
+{{ toYaml .Values.customLabels | indent 8}}
+{{- end }}
+      annotations:
+        checksum/configmap: {{ include (print $.Template.BasePath "/ssd-gate/ssd-gate-config.yaml") . | sha256sum }}
+{{- if .Values.ssdgate.annotations -}}
+        {{ toYaml .Values.ssdgate.annotations | nindent 8 }}
+{{- end }}
+    spec:
+      initContainers:
+      - name: redis-schema-check
+        image: redis:7-alpine
+        command:
+          - /bin/sh
+          - -c
+          - |
+            echo "Checking Redis connectivity and schema..."
+            until redis-cli -h $REDIS_HOST -p $REDIS_PORT -a "$REDIS_PASSWORD" ping > /dev/null 2>&1; do
+              echo "Waiting for Redis to be ready..."
+              sleep 2
+            done
+            echo "Redis is alive!"
+            echo "Checking if audit schema is loaded..."
+            SCHEMA_EXISTS=$(redis-cli -h $REDIS_HOST -p $REDIS_PORT -a "$REDIS_PASSWORD" EXISTS "audit:event_schema")
+            if [ "$SCHEMA_EXISTS" = "1" ]; then
+              SCHEMA_SIZE=$(redis-cli -h $REDIS_HOST -p $REDIS_PORT -a "$REDIS_PASSWORD" STRLEN "audit:event_schema")
+              echo "Audit schema found! Size: ${SCHEMA_SIZE} bytes"
+            else
+              echo "ERROR: Audit schema not found in Redis!"
+              exit 1
+            fi
+            echo "All preconditions met!"
+        envFrom:
+        - configMapRef:
+            name: ssd-audit-emitter-config
+            optional: true
+        env:
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: redis-secret
+              key: password
+      containers:
+      - args:
+        - /app/ssdgate
+        - -configFile=/app/config/ssd-gate-config.yaml
+        - -unsafe=false                                 # set to true during initial configuration, not required in production
+        image: {{ template "ssdgate.image" . }}
+        #imagePullPolicy: Always
+        name: ssd-gate
+        ports:
+        - containerPort: 8001
+          protocol: TCP
+      {{- with .Values.ssdgate.probes }}
+      {{- toYaml . | nindent 8 }}
+      {{- else }}
+        livenessProbe:
+          failureThreshold: 6
+          httpGet:
+            path: /healthz
+            port: 8001
+            scheme: HTTP
+          periodSeconds: 20
+          successThreshold: 1
+          timeoutSeconds: 1
+        readinessProbe:
+          failureThreshold: 6
+          httpGet:
+            path: /healthz
+            port: 8001
+            scheme: HTTP
+          periodSeconds: 20
+          successThreshold: 1
+          timeoutSeconds: 1
+      {{- end }}
+        env:
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: redis-secret
+              key: password
+      {{- if eq .Values.ssdgate.auth_type "dex_oidc" }}
+        - name: DEX_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: gate-dex-client-secret
+              key: client-secret
+        - name: DEX_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: dex-client-id
+              key: client-id
+      {{- end }}
+        envFrom:
+        - configMapRef:
+            name: ssd-proxy-certs
+            optional: true
+        - configMapRef:
+            name: ssd-audit-emitter-config
+            optional: true
+        - secretRef:
+            name: ssd-initial-password
+            optional: true
+      {{- with .Values.ssdgate.resources }}
+        resources:
+      {{ toYaml . | nindent 10 }}
+      {{- end }}
+        securityContext:
+      {{- if .Values.ssdgate.securityContext }}
+      {{ toYaml .Values.ssdgate.securityContext | nindent 10 }}
+      {{- else }}
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+          runAsGroup: 1000
+          seccompProfile:
+            type: RuntimeDefault
+      {{- end }}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /app/config # This is the emptyDir where the processed configs are placed
+          name: config-home
+        - mountPath: /app/services # this is where we expect to find the default services-config.yaml
+          name: services-config
+        - mountPath: /app/saml   # Any saml-authenticator specific files go here. this is option
+          name: saml-files
+        - mountPath: /usr/local/share/ca-certificates
+          name: custom-certs
+        - mountPath: /app/internaltoken
+          name: ssd-gate-token
+        - mountPath: /app/publickeys
+          name: ssd-public-keys
+      initContainers:
+      - command:
+        - sh
+        - /tmp/decoder/secret-decoder.sh # Replace secrets with the values from k8s secrets, use another script for vault, AWS-secrets, etc.
+        - /tmp/config  # source
+        - /app  # Destination
+        image: {{ template "k8sdecoder.image" . }}
+        imagePullPolicy: IfNotPresent
+        name: replace-secrets
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /tmp/decoder  # secret decoder script
+          name: secret-decoder
+        - mountPath: /tmp/config   # mount point of the config, with secrets referred to as "encrypted:SECRET-NAME:KEY-NAME"
+          name: ssd-gate-config
+        - mountPath: /app/config   # emptyDir where the files with secrets replaced with correct values will be placed
+          name: config-home
+        - mountPath: /app/publickeys
+          name: ssd-public-keys
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - emptyDir: {}              # Mounted on /app/config
+        name: config-home
+      - configMap:                # Mounted on /tmp/config, that has secrets replaced and placed in /app/config
+          defaultMode: 420
+          name: ssd-gate-config
+          optional: true
+        name: ssd-gate-config
+      - configMap:                # Mounted on /tmp/config, that has secrets replaced and placed in /app/config
+          defaultMode: 420
+          name: services-config
+          optional: true
+        name: services-config
+      - name: ssd-gate-token
+        secret:
+          defaultMode: 420
+          secretName: ssd-gate-token
+      - configMap:
+          defaultMode: 420
+          name: ssd-public-keys
+        name: ssd-public-keys
+      - configMap:                # Script for secret replacement, use "encrypted:SECRETE-NAME:KEY" for value, key should be same as the secret-name
+          defaultMode: 420
+          name: secret-decoder
+          optional: true
+        name: secret-decoder
+      - configMap:                # Templates for static content with variable values
+          defaultMode: 420
+          name: ssd-gate-templates
+          optional: true
+        name: ssd-gate-templates
+      - name: saml-files         # Optional: for SAML metadata.xml, certificate and key (required for Signed assertion)
+        secret:
+          defaultMode: 420
+          items:
+          - key: certificate.crt
+            path: certificate.crt
+          - key: certificate.crt
+            path: private.key         # Only key is a secret
+          - key: metadata.xml
+            path: metadata.xml        #e.g. Specify /app/saml/metadata.xml ssd-gate-config.yaml
+          optional: true
+          secretName: saml-files
+      - name: poc-passwords         # Can be deleted after Authentication has been configured, this is for POC/start up only
+        secret:
+          defaultMode: 420
+          optional: true
+          secretName: ssd-initial-passwords
+      - name: ssd-proxy-certs
+        configMap:
+          defaultMode: 420
+          optional: true
+          name: ssd-proxy-certs
+      - name: custom-certs  # Optional: In case we are using any customer-specific custom CAs
+        configMap:
+          defaultMode: 420
+          items:
+          - key: ca.crt
+            path: ca.crt
+          optional: true
+          name: customer-custon-ca
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+

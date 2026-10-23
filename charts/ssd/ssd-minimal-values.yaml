@@ -1,0 +1,93 @@
+##############################################################################################################################################
+#################This file is used to Install SSD with Nginx Ingress Controller and Login with Inbuilt Authentication#######################################################################################################################################################################
+# Global variables can be accessed across all the charts including sub-charts
+global:
+  gkeworkload: false
+  # If cert-manager is installed, TLS secrets will created automatically, as an 'Issuer' will be created
+  certManager:  # set to true if cert-manager is installed
+    installed: true
+  createIngress: true
+
+  ssdUI: # URL used to access the application
+    # Change to http if global.certManager.installed is false
+    protocol: https
+    ingressClass: nginx
+    ## Update the host value with proper dns entry to access the SSD UI
+    host: SSD.REPLACE.THIS.WITH.YOURCOMPANY.COM
+    ingress:
+      annotations:
+        nginx.ingress.kubernetes.io/client-header-buffer-size: 100m
+        nginx.ingress.kubernetes.io/proxy-body-size: 500m
+        nginx.ingress.kubernetes.io/proxy-connect-timeout: "18000"
+        nginx.ingress.kubernetes.io/proxy-read-timeout: "18000"
+        nginx.ingress.kubernetes.io/proxy-send-timeout: "18000"
+
+#############################################################################
+### Change the Organisation name if user wants a different name in the UI
+organisationname: opsmx
+
+### Admin groups in SSD for Rbac #############################################
+admingroups: admin
+
+############ Update the Prometheus Ingress Url ###############################
+prometheusUrl: Promethues.ingress.url.com
+#######################################################################################################################
+#### Update the below paramerts only if the user want the Migrate the Existing Data to HA Setup for DGraph ############
+#######################################################################################################################
+dgraph:
+  storageMountSize: 5Gi
+  HA:
+    enabled: false
+    replicas: 3
+    migrateolddata: true
+    ### Update the S3 Bucket Name where the existing Dgraph Data is stored  #########################################
+    s3bucketurl: s3:///S3BUCKETNAME/DGRAPHFOLDER
+    saAnnotations: {}
+
+###################################################################################################
+toolchain:
+  ### Change to true if user wants IAM role to use the Kubernetes service accounts to Access S3 Buckets ##################
+  iamrole: false
+  ### Update the Annotations so IAM role uses the Kubernetes service accounts to Access S3 Buckets ##################
+  saAnnotations: {}
+  #  eks.amazonaws.com/role-arn: arn:aws:iam::111122223333:role/<iam role name>
+################################################################################################
+supplychainapi:
+  ## Below is the parameter to load the data in the UI
+  cachePollingInterval: 6
+  ## Below is the command used to get the IssuerID ###
+  ## kubectl get --raw /.well-known/openid-configuration | jq -r .issuer ###
+  ssdIssuer:
+  whitelist_Urls:
+    - https://api.github.com
+    - docker.io
+################################################################################################
+## Change this true if user need to enable the AIModel Scan ####################################
+## If true AI Shield and DLVS Services will be installed #######################################
+installAimlSvcs: false
+
+################################################################################################
+#### Change to false if user want to Use AWS S3 bucket to store the scan data ##################
+minio:
+  enabled: true
+  persistence:
+    storageClass: ""
+    size: 10Gi
+  service:
+    type: ClusterIP
+################################################################################################
+### Update the below parameters only if global.minio.enabled is false ########
+### Update the S3 Bucket REGION in AWS #######################################
+s3region: UPDATE.S3BUCKETREGION
+s3bucketurl: https://S3BUCKETNAME.s3.S3BUCKETREGION.amazonaws.com
+################################################################################################
+#####User doesn't need to change the below flags let it be the default one######################
+storageClass:
+ssdgate:
+  installDex: false   # Default will be false, Set to true if dex need to be installed
+  admin_groups:
+  - admin
+  saml:
+    saml_initiated_login: false
+
+RabbitServiceType: ClusterIP

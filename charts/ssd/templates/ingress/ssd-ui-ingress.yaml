@@ -1,0 +1,35 @@
+{{- if .Values.global.createIngress -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+{{- if .Values.global.certManager.installed }}
+    acme.cert-manager.io/http01-edit-in-place: "true"
+    cert-manager.io/issue-temporary-certificate: "true"
+    cert-manager.io/issuer: letsencrypt-{{ .Release.Namespace }}-ssd
+    kubernetes.io/tls-acme: "true"
+{{- end }}
+{{- if .Values.global.ssdUI.ingress.annotations }}
+{{ tpl (toYaml .Values.global.ssdUI.ingress.annotations) . | indent 4 }}
+{{- end }}
+  name: ssd-ui-ingress
+spec:
+  ingressClassName: {{ .Values.global.ssdUI.ingressClass }}
+  rules:
+  - host: {{ .Values.global.ssdUI.host }}
+    http:
+      paths:
+      - backend:
+          service:
+            name: ssd-gate
+            port:
+              number: 8084
+        path: /
+        pathType: {{ .Values.global.ssdUI.pathType }}
+{{- if eq .Values.global.ssdUI.protocol "https" }}
+  tls:
+  - hosts:
+    - {{ .Values.global.ssdUI.host }}
+{{ toYaml .Values.global.ssdUI.ingress.tls | indent 4 }}
+{{- end }}
+{{- end }}

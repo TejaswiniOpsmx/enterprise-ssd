@@ -1,0 +1,223 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: ssd
+    component: toolchain
+{{ include "ssd.standard-labels" . | indent 4 }}
+  name: tool-chain
+spec:
+  replicas: {{ .Values.toolchain.replicaCount }}
+  selector:
+    matchLabels:
+      app: ssd
+      component: toolchain
+  template:
+    metadata:
+      labels:
+        app: ssd
+        component: toolchain
+{{- if .Values.customLabels }}
+{{ toYaml .Values.customLabels | indent 8}}
+{{- end }}
+      annotations:
+        checksum/configmap: {{ include (print $.Template.BasePath "/toolchain/toolchain-configmap.yaml") . | sha256sum }}
+        checksum/shannon-stub-configmap: {{ include (print $.Template.BasePath "/toolchain/toolchain-shannon-stub-configmap.yaml") . | sha256sum }}
+{{- if .Values.toolchain.annotations -}}
+        {{ toYaml .Values.toolchain.annotations | nindent 8 }}
+{{- end }}
+    spec:
+      {{- if and (not .Values.minio.enabled) .Values.toolchain.iamrole }}
+      serviceAccountName: ssd-storage-sa
+      {{- end }}
+      initContainers:
+      - name: temporalfrontend-check
+        image: {{ template "initcontainer.images" . }}
+        command:
+          - sh
+          - -c
+          - |
+            echo 'Waiting for TEMPORAL-FRONTEND to become ready...'
+            until printf "." && nc -z -w 2 {{ .Release.Name }}-temporal-frontend 7233; do
+               sleep 2;
+            done;
+            echo 'TEMPORAL-FRONTEND OK ✓'
+      containers:
+        - name: tool-chain
+          image: {{ template "toolchain.image" . }}
+          env:
+          {{- if .Values.dgraph.HA.enabled }}
+          - name: GRAPHQL_URL
+            value: http://dgraph-alpha-public:8080/graphql
+          {{- else }}
+          - name: GRAPHQL_URL
+            value: http://dgraph-public:8080/graphql
+          {{- end }}
+          - name: TEMPORAL_HOSTPORT
+            value: {{ .Release.Name }}-temporal-frontend:7233
+          {{- if .Values.minio.enabled }}
+          - name: S3_ENDPOINT_URL
+            value: http://{{ .Release.Name }}-minio:9000
+          {{- else }}
+          - name: S3_ENDPOINT_URL
+            value: {{ .Values.s3bucketurl }}
+          - name: S3_Region
+            value: {{ .Values.s3region }}
+          {{- end }}
+          {{- if .Values.minio.enabled }}
+          - name: AWS_ACCESS_KEY_ID
+            valueFrom:
+              secretKeyRef:
+                key: username
+                name: minio-secret
+          - name: AWS_SECRET_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                key: password
+                name: minio-secret
+          {{- else if and (eq .Values.toolchain.iamrole false) (not .Values.minio.enabled) }}
+          - name: AWS_ACCESS_KEY_ID
+            valueFrom:
+              secretKeyRef:
+                key: accesskey
+                name: ssd-storage-secret
+          - name: AWS_SECRET_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                key: secretkey
+                name: ssd-storage-secret
+          {{- end }}
+          - name: Cypher_Key
+            valueFrom:
+              secretKeyRef:
+                key: AESEncryptionKey
+                name: ssdsecret
+          - name: MOBSF_API_KEY
+            valueFrom:
+              secretKeyRef:
+                key: mobsfapikey
+                name: mobsf-secret
+          envFrom:
+          - configMapRef:
+              name: ssd-proxy-certs
+              optional: true
+          ports:
+            - containerPort: 8100
+              protocol: TCP
+          volumeMounts:
+            - name: scanresult
+              mountPath: /tools/scanResult
+            - name: tool-chain-volume
+              mountPath: /tools/config/tool-chain.yaml
+              subPath: tool-chain.yaml
+            - mountPath: /tools/ssd-public-keys
+              name: ssd-public-keys
+            # Shannon stub deliverables (remove when issue #07 replaces stub with real invocation)
+            - mountPath: /tools/shannon-stub-deliverables
+              name: shannon-stub-deliverables
+            - mountPath: /tools/secrets/tool-chain
+              name: token
+              readOnly: true
+            - mountPath: /usr/local/share/ca-certificates
+              name: custom-certs
+          {{- with .Values.toolchain.probes }}
+          {{- toYaml . | nindent 10 }}
+          {{- else }}
+          livenessProbe:
+            failureThreshold: 6
+            httpGet:
+              path: /health
+              port: 8100
+              scheme: HTTP
+            periodSeconds: 20
+            initialDelaySeconds: 30
+            successThreshold: 1
+            timeoutSeconds: 1
+          readinessProbe:
+            failureThreshold: 6
+            httpGet:
+              path: /health
+              port: 8100
+              scheme: HTTP
+            periodSeconds: 20
+            initialDelaySeconds: 30
+            successThreshold: 1
+            timeoutSeconds: 1
+          {{- end }}
+
+      {{- with .Values.toolchain.resources }}
+          resources:
+      {{- toYaml . | nindent 12 }}
+      {{- end }}
+
+      {{- if .Values.toolchain.securityContext }}
+          securityContext:
+      {{ toYaml .Values.toolchain.securityContext | nindent 12 }}
+      {{- else }}
+          securityContext: {{ default "{}" }}
+      {{- end }}
+
+      {{- if .Values.imagePullSecret }}
+      imagePullSecrets:
+      - name: {{ .Values.imagePullSecret }}
+      {{- end }}
+{{ include "otel.sidecar.container" . | indent 8 }}
+      volumes:
+        - name: scanresult
+          emptyDir: {}
+        - name: logs
+          emptyDir: {}
+        - name: tool-chain-volume
+          configMap:
+            name: tool-chain
+            items:
+              - key: tool-chain.yaml
+                path: tool-chain.yaml
+            defaultMode: 420
+        - name: ssd-proxy-certs
+          configMap:
+            defaultMode: 420
+            optional: true
+            name: ssd-proxy-certs
+        - name: custom-certs  # Optional: In case we are using any customer-specific custom CAs
+          configMap:
+            defaultMode: 420
+            items:
+            - key: ca.crt
+              path: ca.crt
+            optional: true
+            name: customer-custon-ca
+        - name: token
+          secret:
+            defaultMode: 420
+            optional: true
+            secretName: tool-chain-token
+        - name: ssd-public-keys
+          configMap:
+            defaultMode: 420
+            name: ssd-public-keys
+        - name: shannon-stub-deliverables
+          configMap:
+            defaultMode: 420
+            name: tool-chain-shannon-stub-deliverables
+        - name: otel-sidecar-volume
+          configMap:
+            name: otel-sidecar-config
+            defaultMode: 420
+      restartPolicy: Always
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: source-scan-config
+  labels:
+    app: ssd
+    component: source-scan
+{{ include "ssd.standard-labels" . | indent 4 }}
+data:
+  source-scan.yaml: |
+    {{- tpl (.Files.Get "config/source-scan/source-scan.yaml") . | nindent 4 }}

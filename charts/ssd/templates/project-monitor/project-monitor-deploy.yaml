@@ -1,0 +1,138 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: project-monitor
+  labels:
+    app: ssd
+    component: project-monitor
+{{ include "ssd.standard-labels" . | indent 4 }}
+spec:
+  replicas: {{ .Values.projectmonitor.replicaCount }}
+  selector:
+    matchLabels:
+      app: ssd
+      component: project-monitor
+  template:
+    metadata:
+      labels:
+        app: ssd
+        component: project-monitor
+{{ include "ssd.standard-labels" . | indent 8 }}
+      annotations:
+        checksum/secret: {{ include (print $.Template.BasePath "/project-monitor/project-monitor-secret.yaml") . | sha256sum }}
+        checksum/configmap: {{ include (print $.Template.BasePath "/project-monitor/project-monitor-cm.yaml") . | sha256sum }}
+{{- if .Values.projectmonitor.annotations -}}
+        {{ toYaml .Values.projectmonitor.annotations | nindent 8 }}
+{{- end }}
+    spec:
+      containers:
+        - name: project-monitor
+          image: {{ template "projectmonitor.image" . }}
+          env:
+          - name: RABBITMQ_HOST
+            value: rabbitmq-service
+          - name: RABBITMQ_PORT
+            value: "5672"
+          - name: RABBITMQ_USERNAME
+            valueFrom:
+              secretKeyRef:
+                key: username
+                name: rabbitmq-secret
+          - name: RABBITMQ_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                key: password
+                name: rabbitmq-secret
+          volumeMounts:
+            - name: ssd-public-keys
+              mountPath: /app/ssd-public-keys
+            - name: ssdsecret
+              mountPath: /app/secrets/
+              readOnly: true
+            - name: project-monitor
+              mountPath: /app/config/project-monitor.yaml
+              subPath: project-monitor.yaml
+            - name: custom-certs
+              mountPath: /usr/local/share/ca-certificates
+            - name: token
+              mountPath: /app/secrets/project-monitor-token/
+              readOnly: true
+            - name: project-monitor-queue
+              mountPath: /app/app-config.yaml
+              subPath: app-config.yaml
+      {{- with .Values.projectmonitor.resources }}
+          resources:
+      {{- toYaml . | nindent 12 }}
+      {{- end }}
+
+      {{- if .Values.projectmonitor.securityContext }}
+          securityContext:
+      {{ toYaml .Values.projectmonitor.securityContext | nindent 12 }}
+      {{- else }}
+          securityContext: {{ default "{}" }}
+      {{- end }}
+
+      {{- if .Values.imagePullSecret }}
+      imagePullSecrets:
+      - name: {{ .Values.imagePullSecret }}
+      {{- end }}
+      volumes:
+        - name: ssdsecret
+          secret:
+            secretName: ssdsecret
+            items:
+              - key: AESEncryptionKey
+                path: ssdsecret/AESEncryptionKey
+            defaultMode: 420
+        - name: project-monitor-queue
+          secret:
+            secretName: project-monitor
+            items:
+              - key: app-config.yaml
+                path: app-config.yaml
+            defaultMode: 420
+        - name: ssd-proxy-certs
+          configMap:
+            name: ssd-proxy-certs
+            optional: true
+            defaultMode: 420
+        - name: custom-certs
+          configMap:
+            name: customer-custon-ca
+            items:
+              - key: ca.crt
+                path: ca.crt
+            optional: true
+            defaultMode: 420
+        - name: ssd-public-keys
+          configMap:
+            name: ssd-public-keys
+            defaultMode: 420
+        - name: token
+          secret:
+            secretName: project-monitor-token
+            defaultMode: 420
+        - name: project-monitor
+          configMap:
+            name: project-monitor-config
+            items:
+              - key: project-monitor.yaml
+                path: project-monitor.yaml
+            defaultMode: 420
+      restartPolicy: Always
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

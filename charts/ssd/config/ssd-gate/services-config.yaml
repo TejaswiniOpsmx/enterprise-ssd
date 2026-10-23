@@ -1,0 +1,196 @@
+# Backend services to route the calls to. Routes are processed in the order provided here
+# All routed configured can be viewed in the browser at the /showroutes endpoint
+# The 3 routes below are optional, they are filled in automatically if nothing is specified
+# OPTIONAL default backends are programmed in. If specified ALL backends including these MUST be included
+# All Options for backend
+  #auth_required: true # Default FALSE!! i.e no login/authentication is required for this backend
+  #strip_prefix: false # If true, the path_prefix is removed before sending to backend. Best is to use only ONE path_prefix
+  #log_traffic: true   # Useful for debugging. This will cause traffic to be logged. NOTE: This MAY expose secrets and should not be used in production
+  #disabled: false     # If true, the backend is temporarily disabled, only for debugging/dev. In prod, best to remove the service altogether
+  #scheme: http        # If the Backend is httpS, please set it https
+  #streaming: false    # If we have a streaming backend e.g. a service that returns results of a DB-query, set this to true(there is a resource hit)
+  #no_follow_redirects: false # If true, the gateway will not follow redirects from the backend
+  #allow_api_key: false # Default FALSE. If true, ApiKeyMiddleware accepts the X-OpsMx-ApiKey header and exchanges it for a userToken. Use with token_type: userToken
+
+- name: supplychain-api-unauth   # Unauthenticated end-point for web-hook posts, we could add JWT to make it authenticated
+  path_prefixes:
+  - "/ssdservice/v1/spinnakerevents"
+  - "/ssdservice/v1/setup"
+  - "/ssdservice/v1/events"
+  - "/ssdservice/v1/ssdFirewall"
+  baseUrl: supplychain-api:8099
+  health_endpoint: /health
+  log_traffic: true
+- name: supplychain-preprocessor-unauth
+  baseUrl: supplychain-preprocessor:8058
+  path_prefixes:
+  - "/webhook/v1/ssd"
+  - "/webhook/v1/publish/sbom"
+  - "/webhook/v1/sbom/status"
+  strip_path: "/webhook"
+  response_header_timeout: 6h
+- name: supplychain-api-team-auth
+  path_prefixes:
+  - "/ssdservice/v1/findbuildid"
+  - "/ssdservice/v1/sbom/scan/upload"
+  - "/ssdservice/v1/sbom/scan/status"
+  baseUrl: supplychain-api:8099
+  health_endpoint: /health
+  log_traffic: true
+  auth_required: true
+  token_type: teamToken
+- name: supplychain-api-auth # Authenticated service apis for supplychain-api
+  path_prefixes:
+  - "/ssdservice/v1/ssd-kubernetes-info"
+  - "/ssdservice/v1/ssd-kubernetes-cluster-info"
+  - "/ssdservice/v1/kubescapeIntegration"
+  - "/ssdservice/v1/opa-firewall"
+  baseUrl: supplychain-api:8099
+  health_endpoint: /health
+  log_traffic: true
+  auth_required: true
+  token_type: serviceToken
+- name: tool-chain-service-auth # Authenticated service apis for ssd-opa
+  path_prefixes:
+  - "/webhook/api/v1/kubescape"
+  baseUrl: tool-chain:8100
+  health_endpoint: /health
+  log_traffic: true
+  auth_required: true
+  strip_path: "/webhook"  # Remove /webhook before sending to ssd-opa
+  token_type: serviceToken
+- name: ssd-opa-unauth   # Unauthenticated end-point for web-hook posts, we could add JWT to make it authenticated
+  path_prefixes:
+  - "/webhook/api/v1/datacollection"   # Need code-change from Shradha?
+  - "/webhook/api/v1/opapermission"
+  strip_path: "/webhook"  # Remove /webhook before sending to ssd-opa
+  baseUrl: ssd-opa:8200
+  health_endpoint: /health
+  log_traffic: true
+- name: ssd-opa-team-auth  # Authenticated end-point for web-hook posts
+  path_prefixes:
+  - "/webhook/api/v1/scandiff"
+  strip_path: "/webhook"
+  baseUrl: ssd-opa:8200
+  health_endpoint: /health
+  log_traffic: true
+  auth_required: true
+  token_type: teamToken
+- name: tool-chain-team-auth  # Authenticated end-point for web-hook posts
+  path_prefixes:
+  - "/webhook/api/v1/sbom"
+  - "/webhook/api/v1/file/save"
+  strip_path: "/webhook"
+  baseUrl: tool-chain:8100
+  health_endpoint: /health
+  log_traffic: true
+  auth_required: true
+  token_type: teamToken
+- name: supplychain-api  # Name
+  path_prefixes:
+  - "/ssdservice"        # incoming calls are routed based on this. Processed in Order i.e. we can have multiple of these going to the same backend
+  baseUrl: supplychain-api:8099
+  auth_required: true # Default false. Note that if the backend does not need auth i.e it will not get the user who requested this
+  health_endpoint: /healthz
+  log_traffic: true
+- name: ssd-opa
+  path_prefixes:
+  - "/ssd-opa"
+  baseUrl: ssd-opa:8200
+  health_endpoint: /health
+  strip_prefix: true
+  log_traffic: true
+  auth_required: true
+- name: supplychain-preprocessor
+  baseUrl: supplychain-preprocessor:8058
+  health_endpoint: /healthz
+  auth_required: true
+- name: tool-chain
+  baseUrl: tool-chain:8100
+  health_endpoint: /
+  auth_required: true
+  path_prefixes:
+  - "/tool-chain"
+  log_traffic: true
+  streaming: false
+  strip_path: "/tool-chain"
+- name: dgraph
+  {{- if .Values.dgraph.HA.enabled }}
+  baseUrl: dgraph-alpha-public:8080
+  {{- else }}
+  baseUrl: dgraph-public:8080
+  {{- end }}
+  health_endpoint: /
+  auth_required: true
+  path_prefixes:
+  - "/graphql"
+  log_traffic: true
+  streaming: false
+- name: hasura
+  baseUrl: hasura:8080
+  health_endpoint: /
+  auth_required: true
+  path_prefixes:
+  - "/v1/graphql"
+  log_traffic: true
+  streaming: false
+- name: ssd-ui
+  baseUrl: ssd-ui:8080
+  health_endpoint: "/ui/index.html"
+  auth_required: true
+  path_prefixes:
+  - "/ui"
+{{- if .Values.minio.enabled }}
+- name: minio
+  path_prefixes:
+  - "/minio"
+  baseUrl: {{ .Release.Name }}-minio:9000
+  health_endpoint: ""
+{{- end }}
+- name: prometheus
+  baseUrl: {{ .Values.prometheusUrl }} #this is dependent on the localtion of the prometheus server
+  health_endpoint: ""
+  auth_required: false
+  path_prefixes:
+  - "/api/v1/query_range"
+  - "/api/v1/query"
+{{- if .Values.ssdgate.installDex }}
+- name: ssd-dex
+  baseUrl: ssd-dex:5556
+  health_endpoint: /healthz/ready
+  auth_required: false
+  log_traffic: true
+  no_follow_redirects: true
+  path_prefixes:
+  - "/dex"
+{{- end }}
+- name: metrics
+  baseUrl: otel-gateway:9464
+  health_endpoint: ""
+  auth_required: false
+  path_prefixes:
+  - "/metrics"
+# Placed last on purpose: routes are matched first-registered-wins (gorilla/mux,
+# not longest-prefix). The broad "/api/v1" prefix must come AFTER prometheus's
+# more specific "/api/v1/query_range" above, or it would shadow it.
+- name: ssd-api-mcp
+  path_prefixes:
+  - "/mcp"                  # MCP endpoint, served natively at /mcp — do not strip
+  - "/api/v1"               # REST API, served natively at /api/v1 (OpenAPI servers: /api/v1) — do not strip
+  baseUrl: ssd-api-mcp:8080
+  health_endpoint: /healthz
+  auth_required: true
+  allow_api_key: true       # ApiKeyMiddleware accepts X-OpsMx-ApiKey and exchanges it for a userToken
+  token_type: userToken     # required pairing for allow_api_key (ApiKeyMiddleware generates a userToken)
+  log_traffic: true
+# OpenAPI spec, served unauthenticated at root /openapi.yaml by the app
+# (embedded via go:embed). Kept public to match the app; its relative
+# `servers: /api/v1` means clients fetch the spec here and then hit /api/v1
+# (the authed route above) for actual calls.
+- name: ssd-api-mcp-spec
+  path_prefixes:
+  - "/openapi.yaml"
+  baseUrl: ssd-api-mcp:8080
+  health_endpoint: /healthz
+  auth_required: false
+  log_traffic: true

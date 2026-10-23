@@ -1,0 +1,11 @@
+apiVersion: v1
+data:
+{{ (tpl (.Files.Glob "config/ssd-ui/nginx.conf").AsConfig . ) | indent 2 }}
+
+kind: ConfigMap
+metadata:
+  name: ssd-ui-nginxconf
+  labels:
+    app: ssd
+    component: ui
+{{ include "ssd.standard-labels" . | indent 4 }}

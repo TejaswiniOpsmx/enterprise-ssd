@@ -1,0 +1,143 @@
+{{- if .Values.db.enabled -}}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: ssd
+    component: db
+{{ include "ssd.standard-labels" . | indent 4 }}
+  name: ssd-db
+spec:
+  podManagementPolicy: {{ .Values.db.podManagementPolicy }}
+  replicas: {{ .Values.db.replicaCount }}
+  serviceName: ssd-db
+  selector:
+    matchLabels:
+      app: ssd
+      component: db
+  template:
+    metadata:
+      annotations:
+{{- if .Values.db.annotations -}}
+{{ toYaml .Values.db.annotations | nindent 8 }}
+{{- end }}
+      labels:
+        app: ssd
+        component: db
+{{- if .Values.customLabels }}
+{{ toYaml .Values.customLabels | indent 8}}
+{{- end }}
+    spec:
+      {{- if .Values.imagePullSecret}}
+      imagePullSecrets:
+      - name: {{ .Values.imagePullSecret}}
+      {{- end }}
+      containers:
+      - image: {{ template "db.image" . }}
+        imagePullPolicy: {{ .Values.db.image.pullPolicy }}
+        name: ssd-db
+        ports:
+        - containerPort: 5432
+          protocol: TCP
+        env:
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: db-secret
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: db-secret
+        volumeMounts:
+        - mountPath: "/var/lib/postgresql/data"
+          name: ssd-db-postgresql
+          subPath: postgres
+      {{- with .Values.db.probes }}
+      {{- toYaml . | nindent 8 }}
+      {{- else }}
+        livenessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 45
+          periodSeconds: 10
+          successThreshold: 1
+          tcpSocket:
+            port: 5432
+          timeoutSeconds: 5
+        readinessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          successThreshold: 1
+          tcpSocket:
+            port: 5432
+          timeoutSeconds: 1
+      {{- end }}
+      {{- with .Values.db.resources }}
+      resources:
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+      {{- if .Values.db.securityContext }}
+      {{ toYaml .Values.db.securityContext | nindent 8 }}
+      {{- else }}
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+      {{- end }}
+      {{- if .Values.global.affinity }}
+      affinity:
+{{ toYaml .Values.global.affinity | indent 8 }}
+      {{- end }}
+      {{- if .Values.global.tolerations }}
+      tolerations:
+{{ toYaml .Values.global.tolerations | indent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- if .Values.noPvc }}
+      volumes:
+      - name: ssd-db-postgresql
+        emptyDir: {}
+{{- else }}
+  volumeClaimTemplates:
+  - metadata:
+      creationTimestamp: null
+      labels:
+        app: ssd
+        component: db
+      name: ssd-db-postgresql
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: {{ .Values.db.storageMountSize }}
+      volumeMode: Filesystem
+      {{- if .Values.storageClass }}
+      storageClassName: {{ .Values.storageClass }}
+      {{- end -}}
+{{- end -}}
+{{- end -}}

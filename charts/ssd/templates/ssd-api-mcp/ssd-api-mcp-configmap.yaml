@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ssd-api-mcp-config
+  labels:
+    app: ssd
+{{ include "ssd.standard-labels" . | indent 4 }}
+    component: ssd-api-mcp
+data:
+{{ (tpl (.Files.Glob "config/ssd-api-mcp/config.yaml").AsConfig . ) | indent 2 }}

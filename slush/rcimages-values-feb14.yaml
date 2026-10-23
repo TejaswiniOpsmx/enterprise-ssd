@@ -1,0 +1,27 @@
+ui:
+  image:
+    tag: 202401291259-ssd
+  securityContext:
+    allowPrivilegeEscalation: false
+toolchain:
+  image:
+    tag: v1.3.5
+  securityContext:
+    runAsUser: 1000
+    runAsGroup: 1000
+ssdopa:
+  image:
+    tag: v1.3.3
+  securityContext:
+    runAsUser: 1000
+    runAsGroup: 1000
+supplychainpreprocessor:
+  image:
+    tag: v0.7.3
+  securityContext:
+    readOnlyRootFilesystem: false
+    runAsNonRoot: false
+supplychainapi:
+  image:
+    tag: v0.4.5
+

@@ -1,0 +1,19 @@
+run:
+  sync-interval: {{ .Values.snykmonitor.interval }}
+logger:
+  level: {{ .Values.snykmonitor.loglevel | quote }} # options: info, debug
+dgraph:
+  {{- if .Values.dgraph.HA.enabled }}
+  host: http://dgraph-alpha-public
+  {{- else }}
+  host: http://dgraph-public
+  {{- end }}
+  port: 8080
+tool-chain:
+  host: http://tool-chain
+  port: 8100
+ssd-opa:
+  host: http://ssd-opa
+  port: 8200
+otelAddr: localhost:4317
+otelInterval: {{ .Values.otel.interval }}

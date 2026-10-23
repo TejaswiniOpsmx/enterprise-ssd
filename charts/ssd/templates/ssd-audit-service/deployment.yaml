@@ -1,0 +1,159 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ssd-audit-service
+  labels:
+    app: ssd
+    component: ssd-audit-service
+{{ include "ssd.standard-labels" . | indent 4 }}
+spec:
+  replicas: {{ .Values.ssdauditservice.replicaCount }}
+  selector:
+    matchLabels:
+      app: ssd
+      component: ssd-audit-service
+  template:
+    metadata:
+      labels:
+        app: ssd
+        component: ssd-audit-service
+{{- if .Values.customLabels }}
+{{ toYaml .Values.customLabels | indent 8}}
+{{- end }}
+      annotations:
+        checksum/configmap: {{ include (print $.Template.BasePath "/ssd-audit-service/configmap.yaml") . | sha256sum }}
+{{- if .Values.ssdauditservice.annotations -}}
+        {{ toYaml .Values.ssdauditservice.annotations | nindent 8 }}
+{{- end }}
+    spec:
+      initContainers:
+      - name: redis-schema-check
+        image: redis:7-alpine
+        name: redis-schema-check
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Checking Redis connectivity and schema..."
+          until redis-cli -h $REDIS_HOST -p $REDIS_PORT -a "$REDIS_PASSWORD" ping > /dev/null 2>&1; do
+            echo "Waiting for Redis to be ready..."
+            sleep 2
+          done
+          echo "Redis is alive!"
+
+          echo "Checking if audit schema is loaded..."
+          SCHEMA_EXISTS=$(redis-cli -h $REDIS_HOST -p $REDIS_PORT -a "$REDIS_PASSWORD" EXISTS "audit:event_schema")
+          if [ "$SCHEMA_EXISTS" = "1" ]; then
+            SCHEMA_SIZE=$(redis-cli -h $REDIS_HOST -p $REDIS_PORT -a "$REDIS_PASSWORD" STRLEN "audit:event_schema")
+            echo "Audit schema found! Size: ${SCHEMA_SIZE} bytes"
+          else
+            echo "ERROR: Audit schema not found in Redis!"
+            exit 1
+          fi
+          echo "All preconditions met!"
+        env:
+        - name: REDIS_HOST
+          value: {{ .Release.Name }}-redis-master
+        - name: REDIS_PORT
+          value: "6379"
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: redis-secret
+      containers:
+      - name: ssd-audit-service
+        image: {{ template "ssdauditservice.image" . }}
+        ports:
+          - containerPort: 50051
+            protocol: TCP
+          - containerPort: 8080
+            protocol: TCP
+        env:
+        - name: REDIS_HOST
+          value: {{ .Release.Name }}-redis-master
+        - name: REDIS_PORT
+          value: "6379"
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: redis-secret
+        - name: HASURA_SERVICE_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: admin-secret
+              name: hasura-admin-secret
+        envFrom:
+        - configMapRef:
+            name: ssd-audit-service-config
+        volumeMounts:
+        - mountPath: /app/secrets/audit-service-token
+          name: token
+          readOnly: true
+        - mountPath: /app/ssd-public-keys
+          name: ssd-public-keys
+        {{- with .Values.ssdauditservice.probes }}
+        {{- toYaml . | nindent 8 }}
+        {{- else }}
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - ps aux | grep consumer | grep -v grep
+          failureThreshold: 3
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - ps aux | grep consumer | grep -v grep
+          failureThreshold: 3
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 1
+        {{- end }}
+      {{- with .Values.ssdauditservice.resources }}
+      resources:
+      {{- toYaml . | nindent 10 }}
+      {{- end }}
+      securityContext:
+      {{- if .Values.ssdauditservice.securityContext }}
+      {{ toYaml .Values.ssdauditservice.securityContext | nindent 12 }}
+      {{- end }}
+      volumes:
+        - name: ssd-public-keys
+          configMap:
+            name: ssd-public-keys
+            defaultMode: 420
+        - name: token
+          secret:
+            optional: true
+            secretName: ssd-audit-service-token
+      {{- if .Values.imagePullSecret }}
+      imagePullSecrets:
+      - name: {{ .Values.imagePullSecret }}
+      {{- end }}
+      restartPolicy: Always
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

@@ -1,0 +1,80 @@
+{
+    "insightsConfigData": [
+        {
+            "chartType": "line",
+            "metricName": "Scan wise - Active scans count",
+            "query": "sum by (k8s_namespace_name,ssd_workflow_type,k8s_deployment_name) (ssd_active_workflows{k8s_namespace_name=\"{{ .Release.Namespace }}\",k8s_deployment_name=\"tool-chain\"})",
+            "plotAxisName": "ssd_workflow_type"
+        },
+        {
+            "chartType": "line",
+            "metricName": "Scan wise - Scans completed count",
+            "query": "sum by (k8s_namespace_name,ssd_workflow_type,k8s_deployment_name) (ssd_executed_workflows_total{k8s_namespace_name=\"{{ .Release.Namespace }}\",k8s_deployment_name=\"tool-chain\"})",
+            "plotAxisName": "ssd_workflow_type"
+        },
+        {
+            "chartType": "line",
+            "metricName": "Scan wise - Scans failed count",
+            "query": "sum by (k8s_namespace_name,ssd_workflow_type,k8s_deployment_name) (ssd_failed_workflows_total{k8s_namespace_name=\"{{ .Release.Namespace }}\",k8s_deployment_name=\"tool-chain\"})",
+            "plotAxisName": "ssd_workflow_type"
+        },
+        {
+            "chartType": "line",
+            "metricName": "Source Code Repositories Scanned - Active count",
+            "query": "sum by (k8s_namespace_name,k8s_deployment_name) (ssd_source_code_repo_scan_active{k8s_namespace_name=\"{{ .Release.Namespace }}\"})",
+            "plotAxisName": "Active Count"
+        },
+        {
+            "chartType": "line",
+            "metricName": "Source Code Repositories Scanned - Completed count",
+            "query": "sum by (k8s_namespace_name,k8s_deployment_name) (ssd_source_code_repo_scan_executed_total{k8s_namespace_name=\"{{ .Release.Namespace }}\"})",
+            "plotAxisName": "Completed Count"
+        },
+        {
+            "chartType": "line",
+            "metricName": "Source Code Repositories Scanned - Failed count",
+            "query": "sum by (k8s_namespace_name,k8s_deployment_name) (ssd_source_code_repo_scan_failed_total{k8s_namespace_name=\"{{ .Release.Namespace }}\"})",
+            "plotAxisName": "Failed Count"
+        },
+        {
+            "chartType": "line",
+            "metricName": "Number of new repositories discovered",
+            "query": "sum by (k8s_namespace_name,k8s_deployment_name) (ssd_new_repo_discovered{k8s_namespace_name=\"{{ .Release.Namespace }}\"})",
+            "plotAxisName": "Discovered"
+        },
+        {
+            "chartType": "line",
+            "metricName": "CI/Build Events Received count",
+            "query": "sum by (k8s_namespace_name,k8s_deployment_name) (ssd_ci_events_triggered_total{k8s_namespace_name=\"{{ .Release.Namespace }}\"})",
+            "plotAxisName": "Received Count"
+        },
+        {
+            "chartType": "bar",
+            "metricName": "SAST Agent - Remediation Events",
+            "query": "round(sum by (event) (increase(remediation_events_total{agent_type='SAST_agent'}[__RANGE__])))",
+            "plotAxisName": "event",
+            "agentType": "SAST_agent"
+        },
+        {
+            "chartType": "bar",
+            "metricName": "CSPM Agent - Remediation Events",
+            "query": "round(sum by (event)  (increase(remediation_events_total{agent_type='CSPM_agent'}[__RANGE__])))",
+            "plotAxisName": "event",
+            "agentType": "CSPM_agent"
+        },
+        {
+            "chartType": "bar",
+            "metricName": "CVE Agent - Remediation Events",
+            "query": "round(sum by (event)  (increase(remediation_events_total{agent_type='CVE_agent'}[__RANGE__])))",
+            "plotAxisName": "event",
+            "agentType": "CVE_agent"
+        },
+        {
+            "chartType": "bar",
+            "metricName": "Binary Agent - Remediation Events",
+            "query": "round(sum by (event)  (increase(remediation_events_total{agent_type='BIR_agent'}[__RANGE__])))",
+            "plotAxisName": "event",
+            "agentType": "BIR_agent"
+        }
+    ]
+}

@@ -1,0 +1,96 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: ssd
+    component: ssd-rabbitmq
+{{ include "ssd.standard-labels" . | indent 4 }}
+  name: rabbitmq
+spec:
+  replicas: {{ .Values.rabbitmq.replicaCount }}
+  selector:
+    matchLabels:
+      app: ssd
+      component: ssd-rabbitmq
+  template:
+    metadata:
+      annotations:
+{{- if .Values.rabbitmq.annotations -}}
+{{ toYaml .Values.rabbitmq.annotations | nindent 8 }}
+{{- end }}
+      labels:
+        app: ssd
+        component: ssd-rabbitmq
+{{ include "ssd.standard-labels" . | indent 8 }}
+    spec:
+      containers:
+      - image: {{ template "rabbitmq.image" . }}
+        imagePullPolicy: IfNotPresent
+        name: rabbitmq
+        env:
+       {{- if .Values.extraEnvVars }}
+       {{- include "tplvalues.render" (dict "value" .Values.extraEnvVars "context" $) | nindent 8 }}
+       {{- end }}
+        envFrom:
+        - configMapRef:
+            name: ssd-proxy-certs
+            optional: true
+        ports:
+        - containerPort: {{ .Values.rabbitmq.port }}
+          protocol: TCP
+        {{- with .Values.rabbitmq.resources }}
+        resources:
+        {{- toYaml . | nindent 10 }}
+        {{- end }}
+        volumeMounts:
+        - mountPath: /usr/local/share/ca-certificates
+          name: custom-certs
+      {{- with .Values.rabbitmq.probes }}
+      {{- toYaml . | nindent 8 }}
+      {{- else }}
+        livenessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 150
+          periodSeconds: 10
+          successThreshold: 1
+          tcpSocket:
+            port: 5672
+          timeoutSeconds: 1
+      {{- end }}
+      {{- if .Values.imagePullSecret}}
+      imagePullSecrets:
+      - name: {{ .Values.imagePullSecret}}
+      {{- end }}
+      restartPolicy: Always
+      securityContext:
+        fsGroup: 1000
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+      - name: ssd-proxy-certs
+        configMap:
+          defaultMode: 420
+          optional: true
+          name: ssd-proxy-certs
+      - name: custom-certs  # Optional: In case we are using any customer-specific custom CAs
+        configMap:
+          defaultMode: 420
+          items:
+          - key: ca.crt
+            path: ca.crt
+          optional: true
+          name: customer-custon-ca

@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ssd-opa
+  labels:
+    app: ssd
+    component: ssd-opa
+{{ include "ssd.standard-labels" . | indent 4 }}
+{{- if .Values.ssdopa.serviceAnnotations }}
+  annotations:
+{{ toYaml .Values.ssdopa.serviceAnnotations | indent 4 }}
+{{- end }}
+spec:
+  ports:
+    - name: ssd-opa
+      protocol: TCP
+      port: 8200
+      targetPort: 8200
+      {{- if eq .Values.k8sServiceType "NodePort" }}
+      nodePort: 8200
+      {{- end }}
+  selector:
+    app: ssd
+    component: ssd-opa

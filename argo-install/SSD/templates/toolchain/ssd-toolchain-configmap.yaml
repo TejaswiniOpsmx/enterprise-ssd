@@ -1,0 +1,17 @@
+---
+# Source: SSD/templates/toolchain/ssd-toolchain-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tool-chain
+  labels:
+    app: oes
+    heritage: "Helm"
+    release: "ssd"
+    chart: "SSD-4.0.9"
+    component: oes-toolchain
+data:
+  tool-chain.yaml: |
+    httpListenPort: 8100
+    sbomPath: /tools/sbom
+    graphQLAddr: http://dgraph-public:8080/graphql

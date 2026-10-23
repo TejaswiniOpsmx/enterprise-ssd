@@ -1,0 +1,3 @@
+OAUTH_BRIDGE_URL: "https://oauth-bridge.company.com"
+OAUTH_BRIDGE_KID: "vmf2itfkeafqxb"
+SSD_ISSUER_BASE_URL: "{{.Values.global.ssdUI.protocol}}://{{.Values.global.ssdUI.host}}"

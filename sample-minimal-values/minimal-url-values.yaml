@@ -1,0 +1,66 @@
+#####################################################
+# This is a minimal configuration needed for SSD Installation
+# Using Dex authentication. 
+#####################################################
+
+global:
+  # when this flag is set to false; UI will be accessible over http instead of https
+  ssl:
+    enabled: false
+
+  # If cert-manager is installed, TLS secrets will created automatically, as an 'Issuer' will be created
+  # Else, the TLS secrets will need to created manually
+  certManager:
+    installed: false
+
+  customCerts:
+    enabled: false        # Set to true if your organization requires custom TLS certs
+    secretName: oes-cacerts # Please do not change this
+
+  ## Set to true to expose oes-ui, oes-gate services over ingress
+  createIngress: true
+
+  ## OES-UI url configuration, defaults to http://localhost:8080
+  oesUI:
+    protocol: http
+    host: test-ssd.ryzon7-isd40.opsmx.org 
+
+    ingress:
+      annotations:
+        kubernetes.io/ingress.class: nginx
+      tls:
+        secretName: ssd-ui-ingress
+
+###############################################################################
+ssdgate:
+  auth_type: dex_oidc  # saml, dex-oidc and poclogin are other valid values
+  auth2_oidc:
+    client_id: ssd-gate
+    connectors: 
+    - type: ldap
+      name: ssd-openldap
+      id: ldap
+      config:
+        host: "ssd-openldap.opsmx-ssd:389"
+        insecureNoSSL: true
+        insecureSkipVerify: true
+         # Variable name stores ldap bindDN in argocd-secret
+        bindDN: "cn=admin,dc=example,dc=org"
+        # Variable name stores ldap bind password in argocd-secret
+        bindPW: "opsmxadmin123"
+        usernamePrompt: Username
+        # Ldap user serch attributes
+        userSearch:
+          baseDN: "dc=example,dc=org"
+          filter: "(objectClass=simpleSecurityObject)"
+          username: cn
+          idAttr: cn
+          emailAttr: cn
+          nameAttr: cn
+        # Ldap group serch attributes
+        groupSearch:
+          baseDN: "dc=example,dc=org"
+          filter: "(objectClass=simpleSecurityObject)"
+          userAttr: cn
+          groupAttr: cn
+          nameAttr: cn

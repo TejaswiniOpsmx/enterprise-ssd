@@ -1,0 +1,30 @@
+---
+# Source: SSD/templates/dgraph/role.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dgraph-schema-configure-argocd-ssd
+---
+# Source: SSD/templates/dgraph/role.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: dgraph-schema-configure-argocd-ssd
+rules:
+- apiGroups: [""]
+  resources: ["*"]
+  verbs: ["*"]
+---
+# Source: SSD/templates/dgraph/role.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: dgraph-schema-configure-argocd-ssd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: dgraph-schema-configure-argocd-ssd
+subjects:
+- kind: ServiceAccount
+  name: dgraph-schema-configure-argocd-ssd
+  namespace: argocd-ssd

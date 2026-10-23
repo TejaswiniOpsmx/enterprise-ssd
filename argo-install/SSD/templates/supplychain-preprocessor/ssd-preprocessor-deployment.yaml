@@ -1,0 +1,77 @@
+---
+# Source: SSD/templates/supplychain-preprocessor/ssd-preprocessor-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: supplychain-preprocessor
+  labels:
+    app: oes
+    component: oes-supplychain-preprocessor
+    heritage: "Helm"
+    release: "ssd"
+    chart: "SSD-4.0.9"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: oes
+      component: oes-supplychain-preprocessor
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: oes
+        component: oes-supplychain-preprocessor
+        heritage: "Helm"
+        release: "ssd"
+        chart: "SSD-4.0.9"
+      annotations:
+        moniker.spinnaker.io/application: isd
+    spec:
+      containers:
+      - name: oes-supplychain-preprocessor
+        image: shraddhaopsmx/supplychain-preprocessor:v1.118
+        volumeMounts:
+        - mountPath: /etc/config
+          name: preprocessor-volume
+        - mountPath: /etc/secrets/
+          name: ssdsecret
+          readOnly: true
+        readinessProbe:
+          failureThreshold: 6
+          httpGet:
+            path: /healthz
+            port: 8058
+            scheme: HTTP
+          periodSeconds: 20
+          successThreshold: 1
+          timeoutSeconds: 1
+      imagePullSecrets:
+        - name: opsmx11-secret
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+      - name: preprocessor-volume
+        secret:
+          secretName: supplychain-preprocessor
+      - name: ssdsecret
+        secret:
+          defaultMode: 420
+          items:
+          - key: AESEncryptionKey
+            path: ssdsecret/AESEncryptionKey
+          secretName: ssdsecret
+      securityContext:
+        runAsNonRoot: true

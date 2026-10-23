@@ -1,0 +1,116 @@
+{
+  "user_activity": [
+    "login",
+    "logout",
+    "profile_update",
+    "password_change",
+    "session_expired"
+  ],
+  "user_role_activity": [
+    "role_created",
+    "role_updated",
+    "role_deleted"
+  ],
+  "cluster_account_activity": [
+    "cluster_created",
+    "cluster_updated",
+    "cluster_deleted"
+  ],
+  "team_activity": [
+    "team_created",
+    "team_updated",
+    "team_deleted"
+  ],
+  "account_activity": [
+    "account_created",
+    "account_updated",
+    "account_deleted"
+  ],
+  "user_integrator_activity": [
+    "integrator_created",
+    "integrator_updated",
+    "integrator_deleted",
+    "integrator_status_updated"
+  ],
+  "api_key_management": [
+    "apikey_user_created",
+    "apikey_user_updated",
+    "create",
+    "update",
+    "delete",
+    "regenerate"
+  ],
+  "scan_now_activity": [
+    "scan_now_project_created",
+    "scan_now_project_updated",
+    "scan_now_project_deleted",
+    "scan_now_project_rescanned",
+    "project_analysis_started",
+    "project_completed",
+    "project_failed",
+    "project_repository_error"
+  ],
+  "scan_activity": [
+    "artifact_analysis",
+    "artifact_vulnerability_scan",
+    "sourcecode_vulnerability_scan",
+    "virustotal_mobileapp_scan",
+    "mobsf_static_scan",
+    "image_license_scan",
+    "image_secret_scan",
+    "openssf_source_scan",
+    "sourcecode_secret_scan",
+    "sourcecode_license_scan",
+    "cbom_scan",
+    "semgrep_scan",
+    "snyk_scan",
+    "helmchart_scan",
+    "codacy_scan",
+    "sonarqube_scan",
+    "virustotal_url_scan",
+    "opengrep_scan",
+    "application_analysis",
+    "firewall_analysis",
+    "data_collection_triggered",
+    "deploy_api_triggered",
+    "event_processing_error",
+    "build_event_recieved",
+    "deploy_event_recieved",
+    "artifact_analysis",
+    "artifact_vulnerability_scan",
+    "sourcecode_vulnerability_scan",
+    "virustotal_mobileapp_scan",
+    "mobsf_static_scan",
+    "image_license_scan",
+    "image_secret_scan",
+    "openssf_source_scan",
+    "sourcecode_secret_scan",
+    "sourcecode_license_scan",
+    "cbom_scan",
+    "semgrep_scan",
+    "snyk_scan",
+    "helmchart_scan",
+    "codacy_scan",
+    "sonarqube_scan",
+    "virustotal_url_scan",
+    "opengrep_scan",
+    "application_analysis",
+    "firewall_analysis"
+  ],
+  "policy_execution_activity": [
+    "policy_exception",
+    "policy_prevent",
+    "firewall_analysis",
+    "model_scan",
+    "garak_scan",
+    "nbdf_scan"
+  ],
+  "remediation_activity": [
+    "remediation_requested",
+    "remediation_started",
+    "remediation_completed",
+    "remediation_failed",
+    "pr_created",
+    "pr_creation_failed"
+  ]
+}

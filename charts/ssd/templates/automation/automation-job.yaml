@@ -1,0 +1,221 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: setup-job
+spec:
+  template:
+    spec:
+      containers:
+      - args:
+           - |-
+             {{- if and .Values.dgraph.HA.enabled }}
+             schema_endpoint=http://dgraph-alpha-public:8080/admin/schema
+             setup_endpoint=http://supplychain-api:8099/ssdservice/v1/setup
+             echo "Checking the Pod Status of Dgraph,Supply Chain API"
+             wait_period=0
+             while true; do
+               kubectl get po -n {{ .Release.Namespace }} -o jsonpath='{range .items[*]}{..metadata.name}{"\t"}{..containerStatuses..ready}{"\n"}{end}' > live.status
+               kubectl get pods -n {{ .Release.Namespace }} -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.containerStatuses[*].ready}{"\n"}{end}' | grep dgraph > dgraph.status
+
+               while read -r pod status; do
+                 echo "$pod status: $status"
+               done < dgraph.status
+
+               DGRAPH=$(awk '{if ($2 != "true") exit 1}' dgraph.status && echo "true" || echo "false")
+               SUPPLYCHAINAPI=$(grep supplychain-api live.status | awk '{print $2}')
+               wait_period=$(($wait_period+10))
+               if [ "$DGRAPH" == "true" ] && [ "$SUPPLYCHAINAPI" == "true" ]; then
+                 sleep 10
+                 echo "############******Adding the Dgraph Schema*********#######################"
+                 SCHEMA_CHECK=`curl -X POST -H "Content-Type: application/json" --data-binary "$(cat /tmp/schema/schema.graphql)" $schema_endpoint`
+                 echo $SCHEMA_CHECK | grep -i Success
+                 if [ $? -eq 0 ]; then
+                    echo "##############***Successfully Updated the Dgraph Schema***########################"
+                 else
+                    echo "##############***Failed to Updated the Dgraph Schema***#########################"
+                    exit 1
+                 fi
+                 until curl -f http://supplychain-api:8099/healthz > /dev/null 2>&1; do
+                    echo "Waiting for Supplychain API to become healthy state ..."
+                    sleep 5
+                 done
+                 echo "#################*****Executing the Setup API Schema****##########################"
+                 RESP=`curl -X POST -H "Content-Type: application/json" --data-binary "$(cat /tmp/setup.json)" $setup_endpoint`
+                 sleep 10
+                 {{- if .Values.db.enabled }}
+                 SSDDB=$(kubectl get pods -n {{ .Release.Namespace }} -l component=db --field-selector=status.phase=Running --no-headers=true | awk '{print $2}')
+                 if [ "$SSDDB" == "1/1" ]; then
+                   echo "Wating for the SSD-DB Pod to come up"
+                   sleep 10
+                   kubectl -n {{ .Release.Namespace }} logs ssd-db-0 > logs.txt
+                   echo "Checking the Schema is updation"
+                   count=$(grep -Ei "PostgreSQL Database directory appears to contain a database|PostgreSQL init process complete" logs.txt | wc -l)
+                   if [ "$count" == "1" ]; then
+                      kubectl -n {{ .Release.Namespace }} delete pods -l app.kubernetes.io/name=temporal
+                      echo "Waiting for frontend pod to be up and running"
+                      kubectl -n {{ .Release.Namespace }} wait --for=condition=ready pod -l app.kubernetes.io/component=frontend --timeout=300s
+                      frontendpod=$(kubectl -n {{ .Release.Namespace }} get pods -l app.kubernetes.io/component=frontend -o jsonpath='{.items[0].metadata.name}')
+                      echo "Waiting for Temporal cluster"
+                      until kubectl -n {{ .Release.Namespace }} exec $frontendpod -- tctl cluster health > /dev/null 2>&1; do
+                        sleep 5
+                      done
+                      kubectl -n {{ .Release.Namespace }} exec -it $frontendpod -- /bin/bash -c "tctl --ns default namespace register -rd 3 || true"
+                      kubectl -n {{ .Release.Namespace }} exec -it $frontendpod -- /bin/bash -c "tctl --ns ssd-opa namespace register -rd 3 || true"
+                      kubectl -n {{ .Release.Namespace }} exec -it $frontendpod -- /bin/bash -c "tctl --ns prism-iac namespace register -rd 3 || true"
+                      kubectl -n {{ .Release.Namespace }} rollout restart deploy tool-chain
+                      kubectl -n {{ .Release.Namespace }} rollout restart deploy ssd-opa
+                      break
+                   else
+                      echo "###########**** Waiting for the SSD-DB Pod to come up ******###########"
+                      exit 1
+                   fi
+                 fi
+                 {{- else }}
+                 kubectl -n {{ .Release.Namespace }} delete pods -l app.kubernetes.io/name=temporal
+                 echo "Waiting for frontend pod to be up and running"
+                 kubectl -n {{ .Release.Namespace }} wait --for=condition=ready pod -l app.kubernetes.io/component=frontend --timeout=300s
+                 frontendpod=$(kubectl -n {{ .Release.Namespace }} get pods -l app.kubernetes.io/component=frontend -o jsonpath='{.items[0].metadata.name}')
+                 echo "Waiting for Temporal cluster"
+                 until kubectl -n {{ .Release.Namespace }} exec $frontendpod -- tctl cluster health > /dev/null 2>&1; do
+                  sleep 5
+                 done
+                 kubectl -n {{ .Release.Namespace }} exec -it $frontendpod -- /bin/bash -c "tctl --ns default namespace register -rd 3 || true"
+                 kubectl -n {{ .Release.Namespace }} exec -it $frontendpod -- /bin/bash -c "tctl --ns ssd-opa namespace register -rd 3 || true"
+                 kubectl -n {{ .Release.Namespace }} exec -it $frontendpod -- /bin/bash -c "tctl --ns prism-iac namespace register -rd 3 || true"
+                 kubectl -n {{ .Release.Namespace }} rollout restart deploy tool-chain
+                 kubectl -n {{ .Release.Namespace }} rollout restart deploy ssd-opa
+                 break
+                 {{- end }}
+               else
+                 if [ $wait_period -gt 10000 ]; then
+                   echo "#############****Script is timed out as the Dgraph and Supply chain is not ready yet****########"
+                   break
+                 else
+                   echo "############****Waiting for Dgraph,Supply chain and Token machine services to be ready*****#########"
+                   sleep 10
+                 fi
+               fi
+             done
+             {{- else }}
+             schema_endpoint=http://dgraph-public:8080/admin/schema
+             setup_endpoint=http://supplychain-api:8099/ssdservice/v1/setup
+             echo "Checking the Pod Status of Dgraph,Supply Chain API"
+             wait_period=0
+             while true; do
+               kubectl get pods -n {{ .Release.Namespace }} -o jsonpath='{range .items[*]}{..metadata.name}{"\t"}{..containerStatuses..ready}{"\n"}{end}' > live.status
+               DGRAPH=$(grep dgraph-0 live.status | awk '{print $2}')
+               SUPPLYCHAINAPI=$(grep supplychain-api live.status | awk '{print $2}')
+               wait_period=$(($wait_period+10))
+               if [ "$DGRAPH" == "true" ] && [ "$SUPPLYCHAINAPI" == "true" ]; then
+                  sleep 10
+                  echo "############******Adding the Dgraph Schema*********#######################"
+                  SCHEMA_CHECK=`curl -X POST -H "Content-Type: application/json" --data-binary "$(cat /tmp/schema/schema.graphql)" $schema_endpoint`
+                  echo $SCHEMA_CHECK | grep -i Success
+                  if [ $? -eq 0 ]; then
+                     echo "##############***Successfully Updated the Dgraph Schema***########################"
+                  else
+                     echo "##############***Failed to Updated the Dgraph Schema***#########################"
+                     exit 1
+                  fi
+                  until curl -f http://supplychain-api:8099/healthz > /dev/null 2>&1; do
+                    echo "Waiting for Supplychain API to become healthy state ..."
+                    sleep 5
+                  done
+                  echo "#################*****Executing the Setup API Schema for Providing the Team Permissions****##########################"
+                  RESP=`curl -X POST -H "Content-Type: application/json" --data-binary "$(cat /tmp/setup.json)" $setup_endpoint`
+                  sleep 10
+                  {{- if .Values.db.enabled }}
+                  SSDDB=$(kubectl get pods -n {{ .Release.Namespace }} -l component=db --field-selector=status.phase=Running --no-headers=true | awk '{print $2}')
+                  if [ "$SSDDB" == "1/1" ]; then
+                    echo "Wating for the SSD-DB Pod to come up"
+                    sleep 10
+                    kubectl -n {{ .Release.Namespace }} logs ssd-db-0 > logs.txt
+                    echo "Checking the Schema is updation"
+                    count=$(grep -Ei "PostgreSQL Database directory appears to contain a database|PostgreSQL init process complete" logs.txt | wc -l)
+                    if [ "$count" == "1" ]; then
+                      kubectl -n {{ .Release.Namespace }} delete pods -l app.kubernetes.io/name=temporal
+                      echo "Waiting for frontend pod to be up and running"
+                      kubectl -n {{ .Release.Namespace }} wait --for=condition=ready pod -l app.kubernetes.io/component=frontend --timeout=300s
+                      frontendpod=$(kubectl -n {{ .Release.Namespace }} get pods -l app.kubernetes.io/component=frontend -o jsonpath='{.items[0].metadata.name}')
+                      echo "Waiting for Temporal cluster"
+                      until kubectl -n {{ .Release.Namespace }} exec $frontendpod -- tctl cluster health > /dev/null 2>&1; do
+                        sleep 5
+                      done
+                      kubectl -n {{ .Release.Namespace }} exec -it $frontendpod -- /bin/bash -c "tctl --ns default namespace register -rd 3 || true"
+                      kubectl -n {{ .Release.Namespace }} exec -it $frontendpod -- /bin/bash -c "tctl --ns ssd-opa namespace register -rd 3 || true"
+                      kubectl -n {{ .Release.Namespace }} exec -it $frontendpod -- /bin/bash -c "tctl --ns prism-iac namespace register -rd 3 || true"
+                      kubectl -n {{ .Release.Namespace }} apply -f https://raw.githubusercontent.com/OpsMx/argocd-ssd/refs/heads/main/license-template.yaml
+                      kubectl -n {{ .Release.Namespace }} rollout restart deploy tool-chain
+                      kubectl -n {{ .Release.Namespace }} rollout restart deploy ssd-opa
+                      break
+                    else
+                      echo "###########**** Waiting for the SSD-DB Pod to come up ******###########"
+                      exit 1
+                    fi
+                  fi
+                  {{- else }}
+                  kubectl -n {{ .Release.Namespace }} delete pods -l app.kubernetes.io/name=temporal
+                  echo "Waiting for frontend pod to be up and running"
+                  kubectl -n {{ .Release.Namespace }} wait --for=condition=ready pod -l app.kubernetes.io/component=frontend --timeout=300s
+                  frontendpod=$(kubectl -n {{ .Release.Namespace }} get pods -l app.kubernetes.io/component=frontend -o jsonpath='{.items[0].metadata.name}')
+                  echo "Waiting for Temporal cluster"
+                  until kubectl -n {{ .Release.Namespace }} exec $frontendpod -- tctl cluster health > /dev/null 2>&1; do
+                    sleep 5
+                  done
+                  kubectl -n {{ .Release.Namespace }} exec -it $frontendpod -- /bin/bash -c "tctl --ns default namespace register -rd 3 || true"
+                  kubectl -n {{ .Release.Namespace }} exec -it $frontendpod -- /bin/bash -c "tctl --ns ssd-opa namespace register -rd 3 || true"
+                  kubectl -n {{ .Release.Namespace }} exec -it $frontendpod -- /bin/bash -c "tctl --ns prism-iac namespace register -rd 3 || true"
+                  kubectl -n {{ .Release.Namespace }} apply -f https://raw.githubusercontent.com/OpsMx/argocd-ssd/refs/heads/main/license-template.yaml
+                  kubectl -n {{ .Release.Namespace }} rollout restart deploy tool-chain
+                  kubectl -n {{ .Release.Namespace }} rollout restart deploy ssd-opa
+                  break
+                  {{- end }}
+
+               else
+                 if [ $wait_period -gt 10000 ]; then
+                   echo "#############****Script is timed out as the Dgraph and Supply chain is not ready yet****########"
+                   break
+                 else
+                   echo "############****Waiting for Dgraph,Supply chain and Token machine services to be ready*****#########"
+                   sleep 10
+                 fi
+              fi
+             done
+             {{- end }}
+        command:
+          - /bin/bash
+          - +x
+          - '-c'
+        image: {{ template "opsmxcustombinaries.image" . }}
+        imagePullPolicy: IfNotPresent
+        name: setup-update
+        volumeMounts:
+        - mountPath: /tmp/schema
+          name: dgraph-schema
+        - mountPath: /tmp
+          name: setup-update
+      serviceAccountName: dgraph-schema-configure-{{ .Release.Namespace }}
+      restartPolicy: OnFailure
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+      - name: dgraph-schema
+        configMap:
+          name: schema-cm
+      - name: setup-update
+        configMap:
+          name: setup-cm

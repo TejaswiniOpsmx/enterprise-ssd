@@ -1,0 +1,75 @@
+---
+# Source: SSD/templates/dgraph/schema-cm.yaml
+apiVersion: v1
+data:
+  schema.graphql: |
+    type Image {
+        id: String! @id
+        LastScannedAt: DateTime
+        components: [Component!] @hasInverse(field: images)
+        vulnCriticalCount: Int @search
+        vulnHighCount: Int @search
+        vulnMediumCount: Int @search
+        vulnLowCount: Int @search
+        vulnInfoCount: Int @search
+        vulnUnknownCount: Int @search
+        vulnNoneCount: Int @search
+        vulnTotalCount: Int @search
+    }
+    
+    type Component {
+        id: String! @id
+        type: String!
+        name: String! @search(by: [exact])
+        version: String! @search(by: [exact])
+        licenses: [String!]
+        purl: String @search(by: [exact])
+        cpe: String @search(by: [exact])
+        vulnerabilities: [Vulnerability!] @hasInverse(field: affects)
+        images: [Image!] @hasInverse(field: components)
+    }
+    
+    enum Severity {
+        critical
+        high
+        medium
+        low
+        info
+        none
+        unknown
+    }
+    
+    type Vulnerability {
+        id: String! @id
+        parent: String! @search(by: [exact])
+        ratings: Severity @search(by: [exact])
+        cwes: [CWE!]
+        summary: String
+        detail: String
+        recommendation: String
+        published: DateTime
+        modified: DateTime
+        cvss: [CVSS!]
+        affects: [Component!] @hasInverse(field: vulnerabilities)
+    }
+    
+    type CWE {
+        id: String! @id
+        name: String!
+        description: String
+    }
+    
+    type CVSS {
+        type: String
+        score: String
+    }
+    
+kind: ConfigMap
+metadata:
+  name: schema-cm
+  labels:
+    app: ssd
+    component: dgraph
+    heritage: "Helm"
+    release: "ssd"
+    chart: "SSD-4.0.9"

@@ -1,0 +1,24 @@
+httpListenPort: 8200
+{{- if .Values.dgraph.HA.enabled }}
+graphQLAddr: http://dgraph-alpha-public:8080/graphql
+dgraphQLAddr: http://dgraph-alpha-public:8080/query
+{{- else }}
+graphQLAddr: http://dgraph-public:8080/graphql
+dgraphQLAddr: http://dgraph-public:8080/query
+{{- end }}
+ssdUrl: {{.Values.global.ssdUI.protocol}}://{{.Values.global.ssdUI.host}}
+logLevel: {{ .Values.ssdopa.loglevel }}
+reScheduler: false
+cspmReScheduler: {{ .Values.ssdopa.cspmReScheduler }}
+temporalHostPort: {{ .Release.Name }}-temporal-frontend:7233
+maxConcurrentActivityExecutionSize: 0 # optional field; default is 0 which means maximum
+maxConcurrentWorkflowTaskExecutionSize: 0 # optional field; default is 0 which means maximum
+maxConcurrentActivityExecutionSizeForAdhoc: 0
+maxConcurrentWorkflowTaskExecutionSizeForAdhoc: 0
+auditEnable: true
+redis:
+  address : {{ .Release.Name }}-redis-master:6379
+  db: 0
+otelAddr: localhost:4317
+otelInterval: {{ .Values.otel.interval }}
+otelLongInterval: {{ .Values.otel.LongInterval }}

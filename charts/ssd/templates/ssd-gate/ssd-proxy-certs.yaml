@@ -1,0 +1,18 @@
+# Instructions for creating handling custom-certs and proxy configuration in the deployment environment
+# 1. Create a configMap called "custom-certs"
+#    kubectl -n opsmx-ssd create cm custom-certs --from-file ca.crt=<your certs file>
+# 2. Uncomment the "SSL_CERT_FILE" line below
+# 3. For proxy configuration, uncomment all the "proxy" lines and edit the values as appropriate
+# 4. Update this file in the namespace: kubectl -n opsmx-ssd apply -f ssd-proxy-certs.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ssd-proxy-certs
+data:
+  #SSL_CERT_FILE: "/usr/local/share/ca-certificates/ca.crt"
+  #http_proxy: "http://myproxy.local:8812"
+  #https_proxy: "http://myproxy.local:8812"
+  #HTTPS_PROXY: "http://myproxy.local:8812"
+  #HTTP_PROXY: "http://myproxy.local:8812"
+  #NO_PROXY: "*.cache.amazonaws.com,*.opsmx,.svc.local,.svc,.cluster.local,*.svc.local,*.svc,*.cluster.local,localhost,127.0.0.1
+  #no_proxy: "*.cache.amazonaws.com,*.opsmx,.svc.local,.svc,.cluster.local,*.svc.local,*.svc,*.cluster.local,localhost,127.0.0.1

@@ -1,0 +1,11 @@
+# Shannon stub deliverables (remove when issue #07 replaces stub with real invocation)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tool-chain-shannon-stub-deliverables
+  labels:
+    app: ssd
+{{ include "ssd.standard-labels" . | indent 4 }}
+    component: toolchain
+data:
+{{ (.Files.Glob "config/toolchain/shannon-stub-deliverables/*").AsConfig | indent 2 }}

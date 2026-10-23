@@ -1,0 +1,123 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ssd-license-generator
+  labels:
+    app: ssd
+    component: license-generator
+{{ include "ssd.standard-labels" . | indent 4 }}
+spec:
+  replicas: {{ .Values.licensegenerator.replicaCount }}
+  selector:
+    matchLabels:
+      app: ssd
+      component: license-generator
+  template:
+    metadata:
+      labels:
+        app: ssd
+        component: license-generator
+    spec:
+      containers:
+      - name: ssd-license-generator
+        image: {{ template "licensegenerator.image" . }}
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+        env:
+        - name: CONFIG_PATH
+          value: "/app/config.yaml"
+        volumeMounts:
+        - name: config
+          mountPath: /app/config.yaml
+          subPath: config.yaml
+          readOnly: true
+        - name: data
+          mountPath: /app/data
+        - name: templates
+          mountPath: /app/templates
+          readOnly: true
+      {{- with .Values.licensegenerator.probes }}
+      {{- toYaml . | nindent 8 }}
+      {{- else }}
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+      {{- end }}
+      {{- with .Values.licensegenerator.resources }}
+        resources:
+      {{- toYaml . | nindent 10 }}
+      {{- end }}
+        securityContext:
+      {{- if .Values.licensegenerator.securityContext }}
+      {{ toYaml .Values.licensegenerator.securityContext | nindent 10 }}
+      {{- else }}
+          runAsNonRoot: true
+          runAsUser: 1000
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false  # BadgerDB needs write access to /app/data
+          capabilities:
+            drop:
+              - ALL
+      {{- end }}
+      {{- if .Values.imagePullSecret}}
+      imagePullSecrets:
+      - name: {{ .Values.imagePullSecret}}
+      {{- end }}
+      {{- if .Values.global.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.global.nodeSelector | indent 8 }}
+      {{- end }}
+      {{- if .Values.global.affinity }}
+      affinity:
+{{ toYaml .Values.global.affinity | indent 8 }}
+      {{- end }}
+      {{- if .Values.global.tolerations }}
+      tolerations:
+{{ toYaml .Values.global.tolerations | indent 8 }}
+      {{- end }}
+      securityContext:
+        fsGroup: 1000
+      volumes:
+        - name: config
+          configMap:
+            name: ssd-license-generator-config
+        - name: data
+          persistentVolumeClaim:
+            claimName: ssd-license-generator-data
+        - name: templates
+          configMap:
+            name: ssd-license-generator-templates
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

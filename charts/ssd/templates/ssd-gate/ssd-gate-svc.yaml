@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: ssd
+    component: gate
+  name: ssd-gate
+{{- if .Values.db.serviceAnnotations }}
+  annotations:
+{{ toYaml .Values.db.serviceAnnotations | indent 4 }}
+{{- end }}
+spec:
+  ports:
+  - name: ssd-gate
+    port: 8084
+    protocol: TCP
+    targetPort: 8001
+  selector:
+    app: ssd
+    component: gate
+  sessionAffinity: None
+  type: ClusterIP

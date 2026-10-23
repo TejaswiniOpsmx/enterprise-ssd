@@ -1,0 +1,12 @@
+apiVersion: v1
+data:
+  secret-config.yaml: |
+    {{- tpl (.Files.Get "config/token-machine/secret-config.yaml") . | nindent 4 }}
+kind: ConfigMap
+metadata:
+  name: token-machine
+  labels:
+    app: ssd
+    component: token-machine
+{{ include "ssd.standard-labels" . | indent 4 }}
+

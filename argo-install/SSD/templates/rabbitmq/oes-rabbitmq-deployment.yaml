@@ -1,0 +1,45 @@
+---
+# Source: SSD/templates/rabbitmq/oes-rabbitmq-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: oes
+    component: rabbitmq
+    heritage: "Helm"
+    release: "ssd"
+    chart: "SSD-4.0.9"
+  name: rabbitmq
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: oes
+      component: rabbitmq
+  template:
+    metadata:
+      annotations:
+        moniker.spinnaker.io/application: isd
+      labels:
+        app: oes
+        component: rabbitmq
+        heritage: "Helm"
+        release: "ssd"
+        chart: "SSD-4.0.9"
+    spec:
+      containers:
+      - image: rabbitmq:3.11.4-management
+        imagePullPolicy: IfNotPresent
+        name: rabbitmq
+        env:
+          - name: RABBITMQ_DEFAULT_USER
+            value: 'rabbitmq'
+          - name: RABBITMQ_DEFAULT_PASS
+            value: 'Networks123'
+        ports:
+        - containerPort: 5672
+          protocol: TCP
+        resources: {}
+      restartPolicy: Always
+      securityContext:
+        fsGroup: 1000

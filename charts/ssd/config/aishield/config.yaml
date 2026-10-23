@@ -1,0 +1,27 @@
+appName: AIShield
+logLevel: info ## Need to parameterise
+showVersion: false
+timezone: "America/Los_Angeles" ## Need to parameterise
+apiHost: aishield
+apiPort: 8090
+publicKeyPath: /tools/ssd-public-keys
+gatewayPort: 8080
+scanResultPath: "/tools/scanResult"
+opaHostPort: "http://ssd-opa:8200"
+toolChainHostPort: "http://tool-chain:8100"
+runtime:
+  workerCount: 2
+temporal:
+  maxConcurrentActivityExecutionSize: 100
+  maxConcurrentWorkflowTaskExecutionSize: 100
+dgraph:
+  internalTokenPath: "/tools/secrets/aishield/token"
+  {{- if .Values.dgraph.HA.enabled }}
+  graphQLAddr: "http://dgraph-alpha-public:8080/graphql"
+  {{- else }}
+  graphQLAddr: "http://dgraph-public:8080/graphql"
+  {{- end }}
+dlvs:
+  addr: "http://dlvs:5000"
+garakMaxModelSizeB: 13
+activityTimeout: "8h"

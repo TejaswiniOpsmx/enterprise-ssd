@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: ssd
+    component: opsmx-assistant
+{{ include "ssd.standard-labels" . | indent 4 }}
+  name: opsmx-assistant
+spec:
+  replicas: {{ .Values.opsmxassistant.replicaCount }}
+  selector:
+    matchLabels:
+      app: ssd
+      component: opsmx-assistant
+  template:
+    metadata:
+      annotations:
+{{- if .Values.opsmxassistant.annotations -}}
+        {{ toYaml .Values.opsmxassistant.annotations | nindent 8 }}
+{{- end }}
+      labels:
+        app: ssd
+        component: opsmx-assistant
+{{- if .Values.customLabels }}
+{{ toYaml .Values.customLabels | indent 8}}
+{{- end }}
+    spec:
+      containers:
+      - image: {{ template "opsmxassistant.image" . }}
+        name: opsmx-assistant
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        volumeMounts:
+        - name: ui-config
+          mountPath: /usr/share/nginx/html/app.config.json 
+          subPath: app.config.json
+      {{- with .Values.opsmxassistant.resources }}
+        resources:
+      {{- toYaml . | nindent 10 }}
+      {{- end }}
+      {{- if .Values.opsmxassistant.securityContext }}
+      securityContext:
+      {{ toYaml .Values.opsmxassistant.securityContext | nindent 10 }}
+      {{- else }}
+      securityContext: {{ default "{}" }}
+      {{- end }}
+      {{- if .Values.imagePullSecret}}
+      imagePullSecrets:
+      - name: {{ .Values.imagePullSecret }}
+      {{- end }}
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: opsmx-assistant-config
+        name: ui-config
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

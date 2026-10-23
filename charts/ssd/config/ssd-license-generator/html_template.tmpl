@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comprehensive License - {{.ArtifactName}}</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .header h1 {
+            margin: 0 0 10px 0;
+            font-size: 2.5em;
+        }
+        .header p {
+            margin: 5px 0;
+            opacity: 0.9;
+        }
+        .component {
+            background: white;
+            padding: 25px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .component-header {
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        .component-header h2 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 1.8em;
+        }
+        .component-meta {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        .meta-item {
+            display: flex;
+            align-items: center;
+        }
+        .meta-label {
+            font-weight: 600;
+            color: #666;
+            margin-right: 5px;
+        }
+        .meta-value {
+            color: #333;
+        }
+        .license-badge {
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+        .license-content {
+            background: #f8f9fa;
+            padding: 20px;
+            border-left: 4px solid #667eea;
+            border-radius: 4px;
+            font-family: "Courier New", monospace;
+            font-size: 0.9em;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+            color: #333;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            color: #666;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Comprehensive License</h1>
+        <p><strong>Artifact:</strong> {{.ArtifactName}}</p>{{if .ArtifactTag}}
+        <p><strong>Tag:</strong> {{.ArtifactTag}}</p>{{end}}{{if .ArtifactSHA}}
+        <p><strong>SHA:</strong> {{.ArtifactSHA}}</p>{{end}}
+        <p><strong>Generated:</strong> {{.GeneratedAt.Format "2006-01-02 15:04:05 MST"}}</p>
+    </div>
+    {{range .Components}}
+    <div class="component">
+        <div class="component-header">
+            <h2>{{.Component.Name}}</h2>
+            <div class="component-meta">
+                <div class="meta-item">
+                    <span class="meta-label">Version:</span>
+                    <span class="meta-value">{{.Component.Version}}</span>
+                </div>{{if .Component.Purl}}
+                <div class="meta-item">
+                    <span class="meta-label">PURL:</span>
+                    <span class="meta-value">{{.Component.Purl}}</span>
+                </div>{{end}}
+                <div class="meta-item">
+                    <span class="meta-label">License:</span>
+                    <span class="license-badge">{{.Component.LicenseType}}</span>
+                </div>{{if .Component.SourceURL}}
+                <div class="meta-item">
+                    <span class="meta-label">Source:</span>
+                    <span class="meta-value"><a href="{{.Component.SourceURL}}" target="_blank">{{.Component.SourceURL}}</a></span>
+                </div>{{end}}{{if .Component.Copyrights}}
+                <div class="meta-item">
+                    <span class="meta-label">Copyrights:</span>
+                    <span class="meta-value">{{range $i, $c := .Component.Copyrights}}{{if $i}}, {{end}}{{$c}}{{end}}</span>
+                </div>{{end}}{{if .Component.LicenseURL}}
+                <div class="meta-item">
+                    <span class="meta-label">URL:</span>
+                    <span class="meta-value"><a href="{{.Component.LicenseURL}}" target="_blank">{{.Component.LicenseURL}}</a></span>
+                </div>{{end}}
+            </div>
+        </div>
+        <div class="license-content">{{if .Component.LicenseURL}}{{readLicenseContent .License.FileName}}{{else}}License URL not provided for this component.{{end}}</div>
+    </div>
+    {{end}}
+    <div class="footer">
+        <p>This comprehensive license file was automatically generated by SSD License Generator.</p>
+        <p>Total Components: {{len .Components}}</p>
+    </div>
+</body>
+</html>

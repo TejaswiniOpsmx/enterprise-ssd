@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: ssd
+    component: otel-gateway
+{{ include "ssd.standard-labels" . | indent 4 }}
+  name: otel-gateway
+spec:
+  replicas: {{ .Values.otel.replicaCount }}
+  selector:
+    matchLabels:
+      app: ssd
+      component: otel-gateway
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: ssd
+        component: otel-gateway
+{{- if .Values.customLabels }}
+{{ toYaml .Values.customLabels | indent 8}}
+{{- end }}
+      annotations:
+{{- if .Values.otel.annotations -}}
+        {{ toYaml .Values.otel.annotations | nindent 8 }}
+{{- end }}
+    spec:
+      serviceAccountName: otel-collector-{{ .Release.Namespace }}
+      containers:
+        - args:
+            - --config=/etc/otel/otel-gateway-config.yaml
+          image: {{ template "otel.image" . }}
+          imagePullPolicy: Always
+          name: otel-gateway
+          ports:
+            - containerPort: 4317
+              name: otlp-grpc
+              protocol: TCP
+            - containerPort: 4318
+              name: otlp-http
+              protocol: TCP
+            - containerPort: 9464
+              name: prometheus
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /etc/otel
+              name: config-volume
+      {{- with .Values.otel.resources }}
+          resources:
+      {{- toYaml . | nindent 12 }}
+      {{- end }}
+      {{- if .Values.otel.securityContext }}
+          securityContext:
+      {{ toYaml .Values.otel.securityContext | nindent 12 }}
+      {{- else }}
+          securityContext: {{ default "{}" }}
+      {{- end }}
+      {{- if .Values.imagePullSecret }}
+      imagePullSecrets:
+      - name: {{ .Values.imagePullSecret }}
+      {{- end }}
+      restartPolicy: Always
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - configMap:
+            defaultMode: 420
+            name: otel-gateway-config
+          name: config-volume

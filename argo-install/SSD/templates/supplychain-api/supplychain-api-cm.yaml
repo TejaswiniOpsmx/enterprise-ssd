@@ -1,0 +1,416 @@
+---
+# Source: SSD/templates/supplychain-api/supplychain-api-cm.yaml
+apiVersion: v1
+data:
+  ssd-integrations.yaml: |
+    integrationData:
+      - stage: Source
+        integrations:
+          - integratorType: github
+            displayName: Github
+            multiSupport: false
+            category: sourcetool
+            configurationFields:
+              url:
+                displayName: API URL
+                dataType: input
+                required: true
+                secret: false
+                helpText: GitHub Host URL
+                placeholderText: 'Example:https://github.com'
+              auth:
+                displayName: Auth Type
+                dataType: auth
+                required: true
+                secret: false
+                helpText: Authentiation Type
+                placeholderText: 'Example:knjnasjwokldjhse'
+                authType:
+                  - apiKey
+          - integratorType: sonarqube
+            displayName: Sonarqube
+            multiSupport: false
+            category: sourcetool
+            configurationFields:
+              url:
+                displayName: URL
+                dataType: input
+                required: true
+                secret: false
+                helpText: Sonarqube Host URL
+                placeholderText: 'Example:https://sonarqube.com'
+              auth:
+                displayName: Auth Type
+                dataType: auth
+                required: true
+                secret: true
+                helpText: Authentiation Type
+                placeholderText: 'Example:knjnasjwokldjhse'
+                authType:
+                  - apiKey
+          - integratorType: openssf
+            displayName: OpenSSF
+            multiSupport: false
+            category: scanningtool
+            configurationFields:
+              compliancescan:
+                displayName: Compliance Scan
+                dataType: checkbox
+                required: true
+                secret: false
+                helpText: Enable/Disable
+                placeholderText: 'Example:Compliance Scan'
+                data:
+                  - Compliance Scan
+          - integratorType: semgrep
+            displayName: SemGrep
+            multiSupport: false
+            category: sourcetool
+            configurationFields:
+              auth:
+                displayName: Auth Type
+                dataType: auth
+                required: true
+                secret: true
+                helpText: Authentiation Type
+                placeholderText: 'Example:knjnasjwokldjhse'
+                authType:
+                  - apiKey
+              sastdastscan:
+                displayName: Sast/Dast scan
+                dataType: checkbox
+                required: true
+                secret: false
+                helpText: Enable/Disable
+                placeholderText: 'Example:Helm Scan'
+                data:
+                  - Sast/Dast scan   
+      - stage: Build
+        integrations:
+          - integratorType: jenkins
+            displayName: Jenkins
+            multiSupport: true
+            category: citool
+            configurationFields:
+              url:
+                displayName: Host Url
+                dataType: input
+                required: true
+                secret: false
+                helpText: Jenkins Host URL
+                placeholderText: 'Example:https://org.myjenkin.com/jenkins'
+              builduser:
+                displayName: Approved Build User
+                dataType: chipset
+                required: true
+                secret: false
+                helpText: build_username
+                placeholderText: 'Example:approved_build_username'
+              auth:
+                displayName: Auth Type
+                dataType: auth
+                required: true
+                secret: true
+                helpText: Authentiation Type
+                placeholderText: 'Example:username-Password/username-Token'
+                authType:
+                  - basic
+      - stage: Artifact
+        integrations:
+          - integratorType: trivy
+            displayName: Trivy
+            multiSupport: false
+            category: scanningtool
+            configurationFields:
+              scantype:
+                displayName: Scan Type
+                dataType: checkbox
+                required: true
+                secret: false
+                helpText: Scan Type
+                placeholderText: >-
+                  Example:License Scan/Helm Scan/Vulnerability Scan
+                data:
+                  - License Scan
+                  - Secret Scan for Source Code
+                  - Secret Scan for Containers
+                  - Vulnerability Scan
+                  - Helm Scan
+          - integratorType: docker
+            displayName: Docker
+            multiSupport: true
+            category: dockerregistry
+            configurationFields:
+              url:
+                displayName: Host Url
+                dataType: input
+                required: true
+                secret: false
+                helpText: Docker Host URL
+                placeholderText: 'Example:https://docker.io'
+              repo:
+                displayName: Approved Artifact Repo
+                dataType: chipset
+                required: false
+                secret: false
+                helpText: Repo Name
+                placeholderText: 'Example:dockerhub'
+              auth:
+                displayName: Auth Type
+                dataType: auth
+                required: true
+                secret: true
+                helpText: Authentiation Type
+                placeholderText: 'Example:username/password'
+                authType:
+                  - basic
+          - integratorType: quay
+            displayName: Quay
+            multiSupport: true
+            category: dockerregistry
+            configurationFields:
+              url:
+                displayName: Host Url
+                dataType: input
+                required: true
+                secret: false
+                helpText: Quay Host URL
+                placeholderText: 'Example:https://quay.io'
+              repo:
+                displayName: Approved Artifact Repo
+                dataType: chipset
+                required: false
+                secret: false
+                helpText: Repo Name
+                placeholderText: 'Example:quayrepo'
+              auth:
+                displayName: Auth Type
+                dataType: auth
+                required: true
+                secret: true
+                helpText: Authentiation Type
+                placeholderText: 'Example:username/password'
+                authType:
+                  - basic
+          - integratorType: jfrog
+            displayName: JFrog
+            multiSupport: true
+            category: dockerregistry
+            configurationFields:
+              url:
+                displayName: Host Url
+                dataType: input
+                required: true
+                secret: false
+                helpText: JFrog Host URL
+                placeholderText: 'Example:https://jfrogartifactory.io'
+              repo:
+                displayName: Approved Artifact Repo
+                dataType: chipset
+                required: false
+                secret: false
+                helpText: Repo Name
+                placeholderText: 'Example:jfrog'
+              auth:
+                displayName: Auth Type
+                dataType: auth
+                required: true
+                secret: true
+                helpText: Authentiation Type
+                placeholderText: 'Example:username/password'
+                authType:
+                  - basic
+          - integratorType: grype
+            displayName: Grype
+            multiSupport: false
+            category: dockerregistry
+            configurationFields:
+              vulnerabilityScan:
+                displayName: Vulnerability Scan
+                dataType: checkbox
+                required: true
+                secret: false
+                helpText: Enable/Disable
+                placeholderText: 'Example:Vulnerability Scan'
+                data:
+                  - Vulnerability Scan
+          - integratorType: snyk
+            displayName: Snyk
+            multiSupport: false
+            category: scanningtool
+            configurationFields:
+              auth:
+                displayName: Auth Type
+                dataType: auth
+                required: false
+                secret: true
+                helpText: Authentiation Type
+                placeholderText: 'Example:knjnasjwokldjhse'
+                authType:
+                  - apiKey
+              helmscan:
+                displayName: Helm Scan
+                dataType: checkbox
+                required: true
+                secret: false
+                helpText: Enable/Disable
+                placeholderText: 'Example:Helm Scan'
+                data:
+                  - Helm Scan 
+      - stage: Deploy
+        integrations:
+          - integratorType: kubescape
+            displayName: KubeScape
+            multiSupport: false
+            category: scanningtool
+            configurationFields:
+              scantype:
+                displayName: Scan Type
+                dataType: checkbox
+                required: true
+                secret: false
+                helpText: Scan Type
+                placeholderText: >-
+                  Example:CIS Benchmark Scan/MITRE and ATT&CK Scan/NSA-CISA
+                  Scan/Helm Scan
+                data:
+                  - CIS Benchmark Scan
+                  - MITRE and ATT&CK Scan
+                  - NSA-CISA Scan
+                  - Helm Scan
+          - integratorType: argo
+            displayName: Argo CD
+            multiSupport: false
+            category: cdtool
+            configurationFields:
+              url:
+                displayName: Argo URL
+                dataType: input
+                required: true
+                secret: false
+                helpText: Argo Host URL
+                placeholderText: 'Example:https://argo.io'
+              name:
+                displayName: Account Name
+                dataType: input
+                required: true
+                secret: false
+                helpText: Argo Account Name
+                placeholderText: 'Example:argo'
+              auth:
+                displayName: Auth Type
+                dataType: auth
+                required: true
+                secret: true
+                helpText: Authentiation Type
+                placeholderText: 'Example:knjnasjwokldjhse'
+                authType:
+                  - apiKey  
+          - integratorType: kubernetes
+            displayName: Kubernetes
+            multiSupport: true
+            category: deploymenttarget
+            configurationFields:
+              clustername:
+                displayName: Cluster Name
+                dataType: input
+                required: true
+                secret: false
+                helpText: Cluster name
+                placeholderText: 'Example:lncdcckjvfvsdz'
+              file:
+                displayName: File
+                dataType: file
+                required: true
+                secret: false
+                helpText: File name
+                placeholderText: 'Example:abc.txt'
+          - integratorType: spinnaker
+            displayName: Spinnaker
+            multiSupport: false
+            category: cdtool
+            configurationFields:
+              url:
+                displayName: Host Url
+                dataType: input
+                required: true
+                secret: false
+                helpText: Spinnaker Host URL
+                placeholderText: 'Example:https://spinnaker.io'
+              auth:
+                displayName: Auth Type
+                dataType: auth
+                required: true
+                secret: true
+                helpText: Authentiation Type
+                placeholderText: 'Example:username/password'
+                authType:
+                  - basic
+      - stage: Others
+        integrations:
+          - integratorType: chatgpt
+            displayName: ChatGPT
+            multiSupport: false
+            category: communications
+            configurationFields:
+              auth:
+                displayName: Auth Type
+                dataType: auth
+                required: true
+                secret: true
+                helpText: Authentiation Type
+                placeholderText: 'Example:knjnasjwokldjhse'
+                authType:
+                  - apiKey
+          - integratorType: slack
+            displayName: Slack
+            multiSupport: false
+            category: communications
+            configurationFields:
+              channel:
+                displayName: Channel
+                dataType: input
+                required: true
+                secret: false
+                helpText: Slack Channel Name
+                placeholderText: 'Example:channel_name'
+              auth:
+                displayName: Auth Type
+                dataType: auth
+                required: true
+                secret: true
+                helpText: Authentiation Type
+                placeholderText: 'Example:knjnasjwokldjhse'
+                authType:
+                  - apiKey
+          - integratorType: custompolicy
+            displayName: Custom Policy Source
+            multiSupport: false
+            category: managementtool
+            configurationFields:
+              url:
+                displayName: Repo URL & Path
+                dataType: input
+                required: true
+                secret: false
+                helpText: Custom Policy Source Path
+                placeholderText: 'Example:https://github.com/abc/def'
+              auth:
+                displayName: Auth Type
+                dataType: auth
+                required: true
+                secret: true
+                helpText: Authentiation Type
+                placeholderText: 'Example:knjnasjwokldjhse'
+                authType:
+                  - apiKey  
+    
+kind: ConfigMap
+metadata:
+  name: supplychain-api-cm
+  labels:
+    app: ssd
+    component: oes-supplychain-api
+    heritage: "Helm"
+    release: "ssd"
+    chart: "SSD-4.0.9"
