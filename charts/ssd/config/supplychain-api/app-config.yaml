@@ -49,3 +49,7 @@ policy:
 shieldGateway:
     host: http://ssd-shield-gateway
     port: 8080
+componentForking:
+    enabled: true
+sbomZipDownload:
+    maxArtifacts: 10

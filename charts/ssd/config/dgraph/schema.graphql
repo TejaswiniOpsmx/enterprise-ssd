@@ -1139,7 +1139,6 @@ type Vulnerability {
     cwes: [CWE!]
     summary: String
     detail: String
-    recommendation: String
     published: DateTime
     modified: DateTime
     createdAt: DateTime @search
@@ -1155,6 +1154,15 @@ type Vulnerability {
     policyEvaluation: [PolicyEvaluationData!] @hasInverse(field: vulnNode)
     status: String @search(by:[exact])
     justification: String @search(by:[exact])
+    findings: [Finding!] @hasInverse(field: vulnerability)
+}
+
+type Finding {
+    id: String! @id                                # e.g. "<componentID>~<vulnID>"
+    component: Component!
+    vulnerability: Vulnerability! @hasInverse(field: findings)
+    fixVersion: String @search(by: [exact])
+    # room to grow: severity override, status, detectedAt, scanner, VEX state...
 }
 
 type CWE {

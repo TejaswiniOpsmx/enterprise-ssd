@@ -95,15 +95,14 @@
     "virustotal_url_scan",
     "opengrep_scan",
     "application_analysis",
-    "firewall_analysis"
-  ],
-  "policy_execution_activity": [
-    "policy_exception",
-    "policy_prevent",
     "firewall_analysis",
     "model_scan",
     "garak_scan",
     "nbdf_scan"
+  ],
+  "policy_execution_activity": [
+    "policy_exception",
+    "policy_prevent"
   ],
   "remediation_activity": [
     "remediation_requested",

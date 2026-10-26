@@ -16,3 +16,20 @@ cache:
 logging:
   level: "info"                # Log level: debug, info, warn, error
   format: "json"               # Log format: json, console (use console for development)
+
+consolidation:
+  # Disabled by default: every component carries its own license text.
+  # To opt in, list the SPDX IDs (case-insensitive) whose identical texts should be rendered once.
+  # Only fixed-text licenses that require "a copy of this License" belong here. MIT/BSD/ISC embed
+  # per-project copyright notices and must stay per component. Recommended list:
+  license_types: []
+  # license_types:
+  #   - Apache-2.0
+  #   - MPL-2.0
+  #   - EPL-2.0
+  #   - GPL-2.0
+  #   - GPL-2.0-only
+  #   - GPL-2.0-or-later
+  #   - GPL-3.0
+  #   - GPL-3.0-only
+  #   - GPL-3.0-or-later

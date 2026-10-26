@@ -24,16 +24,18 @@ spec:
         {{ toYaml .Values.dlvs.annotations | nindent 8 }}
 {{- end }}
     spec:
+      securityContext:
+{{ toYaml (default (dict "fsGroup" 10111) .Values.dlvs.securityContext) | indent 8 }}
+      volumes:
+        - name: hf-cache
+          persistentVolumeClaim:
+            claimName: dlvs-hf-cache
       containers:
         - name: dlvs
           image: {{ template "dlvs.image" . }}
           ports:
             - containerPort: 5000
               protocol: TCP
-      volumes:
-        - name: hf-cache
-          persistentVolumeClaim:
-            claimName: dlvs-hf-cache
           volumeMounts:
             - name: hf-cache
               mountPath: /home/dlvs/.cache
@@ -41,8 +43,6 @@ spec:
           resources:
       {{- toYaml . | nindent 12 }}
       {{- end }}
-          securityContext:
-{{ toYaml (default (dict "fsGroup" 10111) .Values.dlvs.securityContext) | indent 12 }}
       {{- if .Values.imagePullSecret }}
       imagePullSecrets:
       - name: {{ .Values.imagePullSecret }}
