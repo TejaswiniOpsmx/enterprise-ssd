@@ -1,6 +1,6 @@
 ssdIngress: {{.Values.global.ssdUI.protocol}}://{{.Values.global.ssdUI.host}}
-detectorImage: {{ template "kubedetector.image" . }}
-kubescapeImage: {{ template "kubescape.image" . }}
+detectorImage: {{ include "kubedetector.image" . }}
+kubescapeImage: {{ include "kubescape.image" . }}
 ssdRescheduler: http://ssd-rescheduler:8010
 gotenberg: http://localhost:3000
 ssdIssuer: {{ .Values.supplychainapi.ssdIssuer }}
@@ -9,10 +9,10 @@ namespace: {{ .Release.Namespace }}
 zapService: http://zap-service:8080
 ssdLicenseGenerator: http://ssd-license-generator:8080
 aiRemediation: http://ai-guardian-remediation:8588
-ssdVuln: http://212.2.240.29:8900
 aibomService: http://aibom-service:8082
 hbomGenerator: http://hbom-generator:8090
 ssdApiMcp: http://localhost:9010
+aigAddress: http://ai-guardian-api.REPLACE_WITH_AIG_NAMESPACE.svc.cluster.local:8080
 audit:
   enabled: true
 tokenMachine:
@@ -43,7 +43,7 @@ projectMonitor:
     port: 9090
 policy:
     repoURL: "https://github.com/OpsMx/ssd-policies.git"
-    pullReferenceName: "release/2026.07"
+    pullReferenceName: "release/2026.10"
     pullReferenceType: "branch"
     pollingTime: 120
 shieldGateway:
