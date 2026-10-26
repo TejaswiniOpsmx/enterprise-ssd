@@ -106,6 +106,12 @@ spec:
               secretKeyRef:
                 key: password
                 name: redis-secret
+          - name: ssd_vuln_url
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.ssdVulnSecret.name }}
+                key: {{ .Values.ssdVulnSecret.key }}
+                optional: true
           - name: OAUTH_BRIDGE_PRIVATE_KEY
             valueFrom:
               secretKeyRef:
