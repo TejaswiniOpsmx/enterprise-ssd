@@ -6,7 +6,6 @@ graphQLAddr: http://dgraph-public:8080/graphql
 {{- end }}
 cloneRepoOnce: {{ .Values.toolchain.cloneRepoOnce }}
 logLevel: {{ .Values.toolchain.logLevel }}
-ossSvc: http://34.28.37.172:8070
 kbUrl: https://ssd.kb.opsmx.net
 ssdVuln: http://212.2.240.29:8900
 mobsfClentAddr: http://mobsf-service:8000
