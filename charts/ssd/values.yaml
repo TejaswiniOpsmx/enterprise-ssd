@@ -12,6 +12,12 @@ imageCredentials:
 storageClass:
 # noPvc is true, no PVCs will be created, suitable for minikube
 noPvc: false
+
+## Secret holding the ssd-vuln URL (may contain credentials); exposed to supplychain-api as ssd_vuln_url and to toolchain as OssSvc
+ssdVulnSecret:
+  name: ssd-vuln-secret
+  key: ssd_vuln_url
+
 ####################################################
 ## Redis configuration
 ## Set it to false only if SSD needs to be configured with external redis
