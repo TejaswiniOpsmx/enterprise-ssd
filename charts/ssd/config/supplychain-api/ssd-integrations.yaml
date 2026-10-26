@@ -690,6 +690,18 @@ integrationData:
             default: form
           sessionMode:
             default: cookie
+          staticToggle:
+            default: inactive
+          dynamicToggle:
+            default: inactive
+          dynamicSource:
+            default: input
+          verificationStrategy:
+            default: everyRequest
+          loginindicator:
+            default: inactive
+          logoutindicator:
+            default: inactive
         integratorConfigs:
           postmanCollectionFile:
             encrypt: false
@@ -723,9 +735,25 @@ integrationData:
             encrypt: false
           passwordField:
             encrypt: false
-          loginIndicator:
+          staticVariables:
             encrypt: false
-          logoutIndicator:
+          dynamicVariables:
+            encrypt: false
+          loginGetUrl:
+            encrypt: false
+          pollVerificationUrl:
+            encrypt: false
+          pollFrequency:
+            encrypt: false
+          pollRequest:
+            encrypt: false
+          pollAdditionalRequestHeaders:
+            encrypt: false
+          verificationStrategyInput:
+            encrypt: false
+          loginIndicatorInput:
+            encrypt: false
+          logoutIndicatorInput:
             encrypt: false
           openApiSpecUrl:
             encrypt: false
