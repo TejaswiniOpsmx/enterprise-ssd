@@ -4,19 +4,19 @@ imageCredentials:
   registry: opsmx11
 aibom:
   image:
-    tag: "2026-08-00-rc4"
+    tag: "2026-10-00-rc1"
 
 aishield:
   image:
-    tag: "2026-08-00-rc4"
+    tag: "2026-10-00-rc1"
 
 artifactscan:
   image:
-    tag: "2026-08-00-rc5"
+    tag: "2026-10-00-rc1"
 
 airemediation:
   image:
-    tag: "2026-08-00-rc4"
+    tag: "2026-10-00-rc5"
 
 cbom:
   image:
@@ -24,7 +24,7 @@ cbom:
 
 checkmarx:
   image:
-    tag: "2026-08-00-rc4"
+    tag: "2026-10-00-rc1"
 
 dlvs:
   image:
@@ -32,15 +32,15 @@ dlvs:
 
 hbom:
   image:
-    tag: "2026-08-00-rc4"
+    tag: "2026-10-00-rc1"
 
 kubescape:
   image:
-    tag: "2026-08-00-rc4"
+    tag: "2026-10-00-rc1"
 
 licensegenerator:
   image:
-    tag: "2026-08-00-rc4"
+    tag: "2026-10-00-rc1"
 
 mobsf:
   image:
@@ -48,64 +48,64 @@ mobsf:
 
 opsmxassistant:
   image:
-    tag: "2026-08-00-rc4"
+    tag: "2026-10-00-rc1"
 
 projectmonitor:
   image:
-    tag: "2026-08-00-rc4"
+    tag: "2026-10-00-rc1"
 
 prismiac:
   image:
-    tag: "2026-08-00-rc4"
+    tag: "2026-10-00-rc3"
 
 pentestgpt:
   image:
-    tag: "2026-08-00-rc4"
+    tag: "2026-10-00-rc1"
 
 shieldgateway:
   image:
-    tag: "2026-08-00-rc4"
+    tag: "2026-10-00-rc3"
 
 shieldprocessor:
   image:
-    tag: "2026-08-00-rc4"
+    tag: "2026-10-00-rc3"
 
 snykmonitor:
   image:
-    tag: "2026-08-00-rc4"
+    tag: "2026-10-00-rc1"
 
 sourcescan:
   image:
-    tag: "2026-08-00-rc4"
+    tag: "2026-10-00-rc5"
 
 supplychainapi:
   image:
-    tag: "2026-08-00-rc8"
+    tag: "2026-10-00-rc1"
 
 supplychainpreprocessor:
   image:
-    tag: "2026-08-00-rc4"
+    tag: "2026-10-00-rc1"
 
 ssdauditservice:
   image:
-    tag: "2026-08-00-rc4"
+    tag: "2026-10-00-rc2"
 
 ssdgate:
   image:
     repository: ssd-gate
-    tag: "2026-08-00-rc4"
+    tag: "2026-10-00-rc1"
 
 ssdnotificationservice:
   image:
-    tag: "2026-08-00-rc4"
+    tag: "2026-10-00-rc2"
 
 ssdopa:
   image:
-    tag: "2026-08-00-rc7"
+    tag: "2026-10-00-rc1"
 
 ssdrescheduler:
   image:
-    tag: "2026-08-00-rc4"
+    tag: "2026-10-00-rc1"
 
 tokenmachine:
   image:
@@ -113,25 +113,25 @@ tokenmachine:
 
 toolchain:
   image:
-    tag: "2026-08-00-rc4"
+    tag: "2026-10-00-rc5"
 
 ui:
   image:
-    tag: "2026-08-00-rc8"
+    tag: "2026-10-00-rc5"
   serviceAnnotations:
     awsAnnotationsGo: HERE
 
 aws-poller:
   image:
-    tag: "2026-08-00-rc4"
+    tag: "2026-10-00-rc1"
 
-kubernetes-detector:
+kubedetector:
   image:
-    tag: "2026-08-00-rc4"
+    tag: "2026-10-00-rc1"
 
 mcpserver:
   image:
-    tag: "2026-08-00-rc4"
+    tag: "2026-10-00-rc2"
 
 zap:
   image:
