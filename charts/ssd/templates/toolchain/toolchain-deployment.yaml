@@ -100,8 +100,8 @@ spec:
           - name: OssSvc
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.ssdVulnSecret.name }}
-                key: {{ .Values.ssdVulnSecret.key }}
+                name: ssd-vuln-secret
+                key: ssd_vuln_url
                 optional: true
           envFrom:
           - configMapRef:
