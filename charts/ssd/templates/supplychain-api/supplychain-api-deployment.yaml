@@ -109,8 +109,8 @@ spec:
           - name: ssd_vuln_url
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.ssdVulnSecret.name }}
-                key: {{ .Values.ssdVulnSecret.key }}
+                name: ssd-vuln-secret
+                key: ssd_vuln_url
                 optional: true
           - name: OAUTH_BRIDGE_PRIVATE_KEY
             valueFrom:
