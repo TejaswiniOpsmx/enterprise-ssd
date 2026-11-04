@@ -43,7 +43,7 @@ projectMonitor:
     port: 9090
 policy:
     repoURL: "https://github.com/OpsMx/ssd-policies.git"
-    pullReferenceName: "release/2026.08"
+    pullReferenceName: "release/2026.10"
     pullReferenceType: "branch"
     pollingTime: 120
 shieldGateway:
