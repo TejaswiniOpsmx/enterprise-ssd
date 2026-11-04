@@ -13,10 +13,9 @@ This guide explains how to provide the secrets used by the AI services
 |---|---|---|---|
 | `ai-guardian-remediation-secret` | ai-guardian-remediation (`envFrom`) | `CLAUDE_CODE_MODEL`, `REMEDIATION_AGENT`, `CLAUDE_CODE_OAUTH_TOKEN`, `DATABASE_URL` | `aiSecrets.airemediation` |
 | `pentestgpt-secret` | pentestgpt-wrapper (env `CLAUDE_CODE_OAUTH_TOKEN`) | `CLAUDE_CODE_OAUTH_TOKEN` | `aiSecrets.pentestgpt` |
-| `claude-credentials` | pentestgpt-wrapper (mounted at `/home/pentester/.claude`) | `.credentials.json` | `aiSecrets.claudeCredentials` |
 
-A secret is created only when its values are no longer the `REPLACE_ME`
-placeholder (or, for `claude-credentials`, when the JSON is provided). With the
+
+A secret is created only when its values are no longer the `REPLACE_ME`. With the
 default values, no AI secret is created.
 
 ## Option A: let the chart create the secrets
@@ -46,45 +45,35 @@ aiSecrets:
     oauthToken: "<claude code oauth token>"
 ```
 
-### Step 3: Locate the Claude credentials file
-
-The `claude-credentials` secret is passed as a file, not in the values file:
-
-```bash
-ls -l $HOME/.claude/.credentials.json
-```
-
-### Step 4: (Optional) Preview the rendered secrets
+### Step 3: (Optional) Preview the rendered secrets
 
 ```bash
 helm template ssd . -f ai-secrets.local.yaml \
-  --set-file aiSecrets.claudeCredentials.json=$HOME/.claude/.credentials.json \
   -s templates/ai-guardian/secret.yaml \
   -s templates/pentestgpt-wrapper/secrets.yaml
 ```
 
 This prints secret contents, so do not paste the output anywhere shared.
 
-### Step 5: Install or upgrade
+### Step 4: Install or upgrade
 
 ```bash
 helm upgrade --install ssd . -n <namespace> \
-  -f ai-secrets.local.yaml \
-  --set-file aiSecrets.claudeCredentials.json=$HOME/.claude/.credentials.json
+  -f ai-secrets.local.yaml
 ```
 
 Add your usual `-f` files/flags as well (for example `--set installAimlSvcs=true`).
 
-### Step 6: Verify
+### Step 5: Verify
 
 ```bash
-kubectl -n <namespace> get secret ai-guardian-remediation-secret pentestgpt-secret claude-credentials
+kubectl -n <namespace> get secret ai-guardian-remediation-secret pentestgpt-secret
 kubectl -n <namespace> get pods | grep -E 'ai-guardian|pentestgpt'
 ```
 
 If the install output shows a `WARNING: these AI secrets were NOT created`
 message, the listed secrets still had placeholder values. Fix the values and
-run Step 5 again.
+run Step 4 again.
 
 ## Option B: use secrets you manage yourself
 
@@ -102,17 +91,12 @@ kubectl -n <namespace> create secret generic my-remediation-secret \
 kubectl -n <namespace> create secret generic my-pentestgpt-secret \
   --from-literal=CLAUDE_CODE_OAUTH_TOKEN='<token>'
 
-kubectl -n <namespace> create secret generic my-claude-credentials \
-  --from-file=.credentials.json=$HOME/.claude/.credentials.json
-```
-
 ### Step 2: Point the chart at them
 
 ```bash
 helm upgrade --install ssd . -n <namespace> \
   --set aiSecrets.airemediation.existingSecret=my-remediation-secret \
-  --set aiSecrets.pentestgpt.existingSecret=my-pentestgpt-secret \
-  --set aiSecrets.claudeCredentials.existingSecret=my-claude-credentials
+  --set aiSecrets.pentestgpt.existingSecret=my-pentestgpt-secret
 ```
 
 When `existingSecret` is set, the chart creates nothing for that secret and the
